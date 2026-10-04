@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('daymark', {
   loadTasks: () => ipcRenderer.invoke('tasks:load'),
   saveTasks: (tasks) => ipcRenderer.invoke('tasks:save', tasks),
+  dragStart: () => ipcRenderer.send('window:drag-start'),
+  drag: (dx, dy) => ipcRenderer.send('window:drag', dx, dy),
   minimizeWindow: () => ipcRenderer.send('window:minimize'),
   closeWindow: () => ipcRenderer.send('window:close'),
   setWidgetOpen: (open) => ipcRenderer.invoke('window:set-widget-open', open),

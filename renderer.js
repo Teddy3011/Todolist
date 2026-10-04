@@ -370,7 +370,8 @@ async function init() {
   $('#minimize-window').addEventListener('click', () => window.daymark.minimizeWindow());
   $('#close-window').addEventListener('click', () => window.daymark.closeWindow());
   $('#collapse-widget').addEventListener('click', collapseWidget);
-  $('#folder-launcher').addEventListener('click', openWidget);
+  $('#folder-launcher').addEventListener('click', () => { if (!launcherDragged) openWidget(); });
+  $('.launcher-stage').addEventListener('pointerdown', startLauncherDrag);
   $('#folder-launcher').addEventListener('mousemove', moveFolderPapers);
   $('#folder-launcher').addEventListener('mouseleave', resetFolderPapers);
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); } });
@@ -393,6 +394,36 @@ function moveFolderPapers(event) {
     paper.style.setProperty('--magnet-x', `${offsetX * depth}px`);
     paper.style.setProperty('--magnet-y', `${offsetY * depth}px`);
   });
+}
+
+// Press-and-move drags the window; a press without movement stays a click that opens the widget.
+let launcherDragged = false;
+function startLauncherDrag(event) {
+  if (event.button !== 0) return;
+  const stage = event.currentTarget;
+  const startX = event.screenX;
+  const startY = event.screenY;
+  launcherDragged = false;
+  const move = (moveEvent) => {
+    const dx = moveEvent.screenX - startX;
+    const dy = moveEvent.screenY - startY;
+    if (!launcherDragged && Math.hypot(dx, dy) < 4) return;
+    if (!launcherDragged) {
+      launcherDragged = true;
+      // Capture only once dragging, so a plain click still reaches the folder button.
+      stage.setPointerCapture(moveEvent.pointerId);
+      window.daymark.dragStart();
+    }
+    window.daymark.drag(dx, dy);
+  };
+  const end = () => {
+    stage.removeEventListener('pointermove', move);
+    stage.removeEventListener('pointerup', end);
+    stage.removeEventListener('pointercancel', end);
+  };
+  stage.addEventListener('pointermove', move);
+  stage.addEventListener('pointerup', end);
+  stage.addEventListener('pointercancel', end);
 }
 
 function resetFolderPapers() {

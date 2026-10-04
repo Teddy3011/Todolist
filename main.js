@@ -98,6 +98,11 @@ app.whenReady().then(() => {
       if (parsed.protocol === 'https:' && ['console.cloud.google.com', 'developers.google.com'].includes(parsed.hostname)) shell.openExternal(parsed.toString());
     } catch {}
   });
+  let dragStart = null;
+  ipcMain.on('window:drag-start', () => { dragStart = mainWindow?.getPosition(); });
+  ipcMain.on('window:drag', (_event, dx, dy) => {
+    if (dragStart) mainWindow?.setPosition(Math.round(dragStart[0] + dx), Math.round(dragStart[1] + dy));
+  });
   ipcMain.on('window:minimize', () => mainWindow?.minimize());
   ipcMain.on('window:close', () => mainWindow?.close());
   ipcMain.handle('window:set-widget-open', (_event, open) => setWidgetOpen(Boolean(open)));
