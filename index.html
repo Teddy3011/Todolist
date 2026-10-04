@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'">
+  <title>Daymark</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="is-collapsed">
+  <section class="launcher-stage" aria-label="Daymark launcher">
+    <div class="launcher-drag" title="Drag widget">•••</div>
+    <button class="folder" id="folder-launcher" aria-label="Open to-do list" aria-expanded="false">
+      <span class="folder__back">
+        <span class="paper paper-1"><i></i><i></i></span>
+        <span class="paper paper-2"><i></i><i></i><i></i></span>
+        <span class="paper paper-3"><b>TO DO</b><i></i><i></i></span>
+        <span class="folder__front"></span>
+        <span class="folder__front right"></span>
+      </span>
+    </button>
+    <span class="launcher-label">Daymark</span>
+  </section>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><span></span></div>
+        <div><strong>Daymark</strong><small>Make today count.</small></div>
+      </div>
+
+      <nav class="nav" aria-label="Task views">
+        <button class="nav-item active" data-view="all">
+          <span class="nav-icon">⌂</span><span>All tasks</span><b id="count-all">0</b>
+        </button>
+        <button class="nav-item" data-view="today">
+          <span class="nav-icon">◷</span><span>Today</span><b id="count-today">0</b>
+        </button>
+        <button class="nav-item" data-view="upcoming">
+          <span class="nav-icon">□</span><span>Upcoming</span><b id="count-upcoming">0</b>
+        </button>
+        <button class="nav-item" data-view="completed">
+          <span class="nav-icon">✓</span><span>Completed</span><b id="count-completed">0</b>
+        </button>
+      </nav>
+
+      <div class="sidebar-label">Lists</div>
+      <div class="list-key">
+        <button data-category="Personal"><i class="dot coral"></i>Personal</button>
+        <button data-category="Work"><i class="dot gold"></i>Work</button>
+        <button data-category="Errands"><i class="dot blue"></i>Errands</button>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="progress-label"><span>Daily progress</span><strong id="progress-copy">0%</strong></div>
+        <div class="progress-track"><span id="progress-bar"></span></div>
+        <small id="progress-detail">Start with one small win.</small>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="widget-titlebar">
+        <div class="widget-brand"><span class="mini-mark">✓</span><strong>Daymark</strong></div>
+        <div class="window-controls">
+          <button id="google-button" class="window-button google-window-button" title="Google Tasks" aria-label="Google Tasks">G<span id="google-dot"></span></button>
+          <button id="collapse-widget" class="window-button" title="Close to folder" aria-label="Close to folder">⌄</button>
+          <button id="pin-window" class="window-button active" title="Keep on top" aria-label="Keep on top">◆</button>
+          <button id="minimize-window" class="window-button" title="Minimize" aria-label="Minimize">−</button>
+          <button id="close-window" class="window-button close" title="Close" aria-label="Close">×</button>
+        </div>
+      </div>
+      <header class="topbar">
+        <div class="date-block"><span id="eyebrow-date"></span><h1 id="view-title">All tasks</h1></div>
+        <div class="top-actions">
+          <label class="search"><span>⌕</span><input id="search-input" type="search" placeholder="Search tasks" aria-label="Search tasks"></label>
+          <button class="primary-button" id="open-new-task"><span>＋</span> New task</button>
+        </div>
+      </header>
+
+      <nav class="widget-tabs" aria-label="Widget task views">
+        <button class="widget-tab active" data-view="all">All <b id="widget-count-all">0</b></button>
+        <button class="widget-tab" data-view="today">Today</button>
+        <button class="widget-tab" data-view="upcoming">Next</button>
+        <button class="widget-tab" data-view="completed">Done</button>
+      </nav>
+
+      <section class="summary-row" aria-label="Task summary">
+        <article><span class="summary-icon green">✓</span><div><strong id="summary-done">0</strong><small>Completed today</small></div></article>
+        <article><span class="summary-icon orange">!</span><div><strong id="summary-open">0</strong><small>Tasks remaining</small></div></article>
+        <blockquote id="daily-note">“Small steps, every day.”</blockquote>
+      </section>
+
+      <section class="task-panel">
+        <div class="panel-heading">
+          <div><h2 id="section-title">Your tasks</h2><p id="section-subtitle">Everything in one calm place.</p></div>
+          <select id="sort-select" aria-label="Sort tasks">
+            <option value="smart">Smart sort</option>
+            <option value="due">Due date</option>
+            <option value="priority">Priority</option>
+            <option value="created">Recently added</option>
+          </select>
+        </div>
+
+        <form id="quick-add" class="quick-add">
+          <span>＋</span><input id="quick-title" autocomplete="off" placeholder="Add a task and press Enter…" aria-label="Quick add task">
+          <button type="button" id="quick-date" title="Set due date">Today</button>
+          <input id="quick-date-input" type="date" aria-label="Quick task due date">
+        </form>
+
+        <div id="task-list" class="task-list"></div>
+        <div id="empty-state" class="empty-state" hidden>
+          <div class="empty-check">✓</div>
+          <h3>Nothing here right now</h3>
+          <p>Enjoy the breathing room, or add a new task.</p>
+          <button id="empty-add">Add a task</button>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="task-modal" hidden>
+    <form class="modal" id="task-form">
+      <div class="modal-head"><div><span class="modal-kicker">PLAN THE NEXT STEP</span><h2 id="modal-title">New task</h2></div><button type="button" class="icon-button" id="close-modal" aria-label="Close">×</button></div>
+      <label>Task name<input id="task-title" required maxlength="120" placeholder="What needs to be done?"></label>
+      <label>Notes<textarea id="task-notes" maxlength="500" placeholder="Add details, context, or a reminder…"></textarea></label>
+      <div class="field-row">
+        <label>Due date<input id="task-date" type="date"></label>
+        <label>List<select id="task-category"><option>Personal</option><option>Work</option><option>Errands</option><option>Google</option></select></label>
+      </div>
+      <fieldset><legend>Priority</legend><div class="priority-options">
+        <label><input type="radio" name="priority" value="low"><span>Low</span></label>
+        <label><input type="radio" name="priority" value="medium" checked><span>Medium</span></label>
+        <label><input type="radio" name="priority" value="high"><span>High</span></label>
+      </div></fieldset>
+      <div class="modal-actions"><button type="button" class="text-button" id="cancel-modal">Cancel</button><button type="submit" class="primary-button">Save task</button></div>
+    </form>
+  </div>
+
+  <div class="modal-backdrop" id="google-modal" hidden>
+    <section class="modal google-modal" role="dialog" aria-modal="true" aria-labelledby="google-modal-title">
+      <div class="modal-head">
+        <div><span class="modal-kicker">SYNC</span><h2 id="google-modal-title">Google Tasks</h2></div>
+        <button type="button" class="icon-button" id="close-google-modal" aria-label="Close">×</button>
+      </div>
+      <div id="google-disconnected">
+        <p class="google-intro">Connect Daymark to your Google Tasks using a private desktop OAuth client.</p>
+        <ol class="google-steps">
+          <li>Enable the Google Tasks API.</li>
+          <li>Configure consent and add yourself as a test user.</li>
+          <li>Create a <strong>Desktop app</strong> OAuth client.</li>
+        </ol>
+        <button type="button" class="outline-button" id="open-google-console">Open Google Cloud Console ↗</button>
+        <label class="google-client-label">OAuth client ID
+          <input id="google-client-id" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com">
+        </label>
+        <button type="button" class="primary-button google-connect-button" id="connect-google">Connect Google account</button>
+      </div>
+      <div id="google-connected" hidden>
+        <div class="connected-badge"><span></span><div><strong>Google Tasks connected</strong><small>Credentials are encrypted on this PC.</small></div></div>
+        <label class="google-client-label">Sync list
+          <select id="google-list-select"></select>
+        </label>
+        <div class="google-actions">
+          <button type="button" class="primary-button" id="sync-google">Sync now</button>
+          <button type="button" class="outline-button" id="refresh-google-lists">Refresh lists</button>
+        </div>
+        <p class="last-sync" id="google-last-sync">Not synced yet.</p>
+        <button type="button" class="text-button disconnect-button" id="disconnect-google">Disconnect Google</button>
+      </div>
+      <p id="google-message" class="google-message" role="status"></p>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="renderer.js"></script>
+</body>
+</html>

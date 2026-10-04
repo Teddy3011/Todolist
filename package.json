@@ -1,0 +1,31 @@
+{
+  "name": "daymark-desktop",
+  "version": "1.6.0",
+  "description": "A calm, focused desktop to-do list.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "devDependencies": {
+    "electron": "^38.2.2",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.daymark.desktop",
+    "productName": "Daymark",
+    "files": [
+      "main.js",
+      "google-tasks.js",
+      "preload.js",
+      "index.html",
+      "styles.css",
+      "renderer.js"
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  }
+}
