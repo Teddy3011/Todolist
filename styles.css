@@ -22,16 +22,11 @@ button { color: inherit; }
 .is-collapsed .launcher-stage { display: flex; }
 .is-collapsed .app-shell { display: none; }
 .is-open .launcher-stage { display: none; }
-.launcher-drag { position: absolute; top: 2px; left: 50%; z-index: 20; transform: translateX(-50%); width: 46px; height: 18px; color: #777; text-align: center; font-size: 10px; letter-spacing: 3px; cursor: move; -webkit-app-region: drag; }
-.launcher-label { color: #333; font-size: 8px; font-weight: 800; letter-spacing: 2.4px; }
 .folder { --magnet-x: 0px; --magnet-y: 0px; position: relative; width: 116px; height: 77px; padding: 0; border: 0; background: transparent; cursor: pointer; outline: none; perspective: 500px; -webkit-app-region: no-drag; }
 .folder:focus-visible { outline: 2px solid #111; outline-offset: 5px; border-radius: 4px; }
 .folder__back { position: absolute; inset: 13px 3px 2px; display: block; border-radius: 5px 6px 7px 7px; background: #1a1a1a; box-shadow: 0 10px 24px rgba(0,0,0,.22); }
 .folder__back::before { content: ""; position: absolute; left: 0; top: -10px; width: 48px; height: 18px; border-radius: 6px 8px 0 0; background: #1a1a1a; }
 .paper { position: absolute; left: 10px; bottom: 8px; width: 90px; height: 55px; display: block; padding: 10px 9px; border: 1px solid #d4d4d1; border-radius: 3px; background: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.11); transform-origin: bottom center; transition: transform .28s cubic-bezier(.2,.8,.2,1), bottom .28s cubic-bezier(.2,.8,.2,1); }
-.paper i { display: block; width: 70%; height: 2px; margin-bottom: 5px; border-radius: 2px; background: #d6d6d3; }
-.paper i:nth-of-type(2) { width: 52%; }
-.paper b { display: block; margin-bottom: 7px; color: #111; font-size: 7px; letter-spacing: 1.2px; text-align: left; }
 .paper-1 { z-index: 1; background: #e5e5e3; transform: translate(var(--magnet-x), var(--magnet-y)) rotate(-2deg); }
 .paper-2 { z-index: 2; background: #f2f2f0; transform: translate(var(--magnet-x), var(--magnet-y)) rotate(2deg); }
 .paper-3 { z-index: 3; transform: translate(var(--magnet-x), var(--magnet-y)); }
@@ -194,7 +189,7 @@ fieldset { border: 0; padding: 0; margin: 0; }legend { color: #5f6e68; font-size
 }
 
 /* Dark ivory handwritten theme */
-h1, h2, h3, button, input, textarea, select, .widget-brand, .launcher-label, .task-main strong {
+h1, h2, h3, button, input, textarea, select, .widget-brand, .task-main strong {
   font-family: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
 }
 
@@ -202,17 +197,13 @@ h1, h2, h3, button, input, textarea, select, .widget-brand, .launcher-label, .ta
   body.is-collapsed { padding: 0; background: transparent; }
   body.is-open { background: #080808; }
   .launcher-stage { background: transparent; }
-  .launcher-drag { top: 0; width: 100%; height: 17px; color: transparent; }
-  .launcher-label { position: absolute; bottom: 3px; color: #eee5d1; font-size: 10px; font-weight: 500; letter-spacing: .2px; text-shadow: 0 1px 3px rgba(0,0,0,.85); }
 
-  .folder { width: 72px; height: 57px; margin-top: -7px; }
+  .folder { width: 72px; height: 57px; }
   .folder__back { inset: 12px 0 0; border-radius: 6px 8px 9px 9px; background: #2e2e2e; box-shadow: 0 5px 12px rgba(0,0,0,.28); }
   .folder__back::before { top: -8px; width: 25px; height: 15px; border-radius: 4px 5px 0 0; background: #2e2e2e; }
   .folder__front { inset: 12px 0 0; border-radius: 6px 8px 9px 9px; background: #2e2e2e; clip-path: none; }
   .folder__front.right { display: none; }
   .paper { left: 11px; bottom: 5px; width: 50px; height: 34px; padding: 5px 4px; border-color: #cfc7b7; border-radius: 2px; opacity: 0; background: #f1ead8; transition: opacity .16s ease, transform .3s cubic-bezier(.2,.8,.2,1), bottom .3s cubic-bezier(.2,.8,.2,1); }
-  .paper i { height: 1px; margin-bottom: 3px; background: #a8a08f; }
-  .paper b { margin-bottom: 3px; color: #242126; font-size: 4px; font-weight: 600; }
   .folder:hover .paper, .folder.open .paper { opacity: 1; }
   .folder:hover:not(.open) .paper-1 { transform: translate(var(--magnet-x), calc(-6px + var(--magnet-y))) rotate(-3deg); }
   .folder:hover:not(.open) .paper-2 { transform: translate(var(--magnet-x), calc(-10px + var(--magnet-y))) rotate(2deg); }
