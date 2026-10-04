@@ -15,16 +15,28 @@ async function loadTasks() {
   try {
     return JSON.parse(await fs.readFile(dataFile(), 'utf8'));
   } catch (error) {
-    if (error.code !== 'ENOENT') console.error('Could not load tasks:', error);
+    if (error.code !== 'ENOENT') {
+      console.error('Could not load tasks:', error);
+      // Keep the unreadable file so starting fresh never destroys it.
+      await fs.rename(dataFile(), dataFile().replace(/\.json$/, `.corrupt-${Date.now()}.json`)).catch(() => {});
+    }
     return [];
   }
 }
 
-async function saveTasks(_event, tasks) {
+let saveQueue = Promise.resolve();
+function saveTasks(_event, tasks) {
   const safeTasks = Array.isArray(tasks) ? tasks : [];
-  await fs.mkdir(path.dirname(dataFile()), { recursive: true });
-  await fs.writeFile(dataFile(), JSON.stringify(safeTasks, null, 2), 'utf8');
-  return true;
+  // Serialize saves so an older snapshot can't land last; write-then-rename so a crash never leaves a half-written file.
+  const write = async () => {
+    await fs.mkdir(path.dirname(dataFile()), { recursive: true });
+    const temp = `${dataFile()}.tmp`;
+    await fs.writeFile(temp, JSON.stringify(safeTasks, null, 2), 'utf8');
+    await fs.rename(temp, dataFile());
+    return true;
+  };
+  saveQueue = saveQueue.catch(() => {}).then(write);
+  return saveQueue;
 }
 
 function createWindow() {

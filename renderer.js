@@ -12,8 +12,9 @@ const state = {
 
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const todayKey = () => new Date().toISOString().slice(0, 10);
-const dateKey = (date) => new Date(date).toISOString().slice(0, 10);
+// en-CA formats as YYYY-MM-DD in the local time zone (toISOString would use UTC).
+const dateKey = (date) => new Date(date).toLocaleDateString('en-CA');
+const todayKey = () => dateKey(Date.now());
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
 const escapeHtml = (value = '') => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
@@ -261,9 +262,11 @@ async function syncGoogle(silent = false) {
   const button = $('#sync-google');
   button.disabled = true;
   if (!silent) setGoogleMessage('Syncing…');
+  let changedDuringSync = false;
   try {
+    const sent = new Map(state.tasks.map((task) => [task.id, task.modifiedAt]));
     const result = await window.daymark.googleSync({ tasks: state.tasks, listId: $('#google-list-select').value || state.google.selectedListId });
-    state.tasks = result.tasks;
+    ({ tasks: state.tasks, changed: changedDuringSync } = mergeSyncResult(state.tasks, result.tasks, sent));
     state.lastSyncedAt = result.syncedAt;
     state.google.selectedListId = result.listId;
     await persist();
@@ -276,7 +279,26 @@ async function syncGoogle(silent = false) {
   } finally {
     state.syncing = false;
     button.disabled = false;
+    if (changedDuringSync) queueGoogleSync();
   }
+}
+
+// Edits made while a sync was in flight win over the sync result; Google bookkeeping comes from the result.
+function mergeSyncResult(current, synced, sent) {
+  const currentById = new Map(current.map((task) => [task.id, task]));
+  let changed = false;
+  const merged = synced.map((task) => {
+    if (!sent.has(task.id)) return task;
+    const local = currentById.get(task.id);
+    if (!local) { changed = true; return { ...task, _deleted: true, modifiedAt: Date.now() }; }
+    if (local.modifiedAt === sent.get(task.id)) return task;
+    changed = true;
+    const { googleId, googleListId, googleUpdatedAt, lastSyncedAt } = task;
+    return { ...local, googleId, googleListId, googleUpdatedAt, lastSyncedAt, modifiedAt: Date.now() };
+  });
+  const added = current.filter((task) => !sent.has(task.id));
+  if (added.length) changed = true;
+  return { tasks: [...added, ...merged], changed };
 }
 
 let googleSyncTimer;
