@@ -16,7 +16,30 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const dateKey = (date) => new Date(date).toLocaleDateString('en-CA');
 const todayKey = () => dateKey(Date.now());
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-const escapeHtml = (value = '') => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
+// Motion via Anime.js v4 (anime.umd.min.js exposes `anime`). Off when Windows "Animation effects" is off.
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const motion = (targets, params) => reduceMotion.matches ? Promise.resolve() : window.anime.animate(targets, params);
+const enterList = (items) => motion([...items].slice(0, 12), { opacity: [0, 1], y: [8, 0], delay: window.anime.stagger(28), duration: 420, ease: 'outQuart' });
+const popCheck = (item) => motion(item.querySelector('.check-button'), { scale: [1, 1.28, 1], duration: 340, ease: 'outQuad' });
+function leaveItem(item) {
+  item.style.pointerEvents = 'none';
+  item.style.overflow = 'hidden';
+  return motion(item, { opacity: 0, x: 18, height: [item.offsetHeight, 0], paddingTop: 0, paddingBottom: 0, duration: 340, ease: 'inOutQuad' });
+}
+function showModal(backdrop) {
+  backdrop.hidden = false;
+  motion(backdrop, { opacity: [0, 1], duration: 200, ease: 'outQuad' });
+  motion(backdrop.querySelector('.modal'), { opacity: [0, 1], y: [14, 0], scale: [0.97, 1], duration: 380, ease: 'outQuart' });
+}
+async function hideModal(backdrop) {
+  if (backdrop.hidden || backdrop.dataset.closing) return;
+  backdrop.dataset.closing = '1';
+  motion(backdrop.querySelector('.modal'), { opacity: 0, y: 8, scale: 0.98, duration: 160, ease: 'inQuad' });
+  await motion(backdrop, { opacity: 0, duration: 180, ease: 'inQuad' });
+  backdrop.hidden = true;
+  delete backdrop.dataset.closing;
+}
+const escapeHtml =(value = '') => value.replace(/[&<>'"]/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' })[char]);
 
 function defaultTasks() {
   const today = todayKey();
@@ -68,7 +91,7 @@ function dueLabel(task) {
   return new Date(`${task.dueDate}T12:00:00`).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
-function render() {
+function render(animate = false) {
   const tasks = visibleTasks();
   const list = $('#task-list');
   list.innerHTML = tasks.map((task) => `
@@ -86,6 +109,7 @@ function render() {
       <div class="task-actions"><button class="more-button" data-action="menu" aria-label="Task actions">···</button></div>
     </article>`).join('');
   $('#empty-state').hidden = tasks.length > 0;
+  if (animate) enterList(list.children);
   updateSummary();
 }
 
@@ -118,7 +142,7 @@ function setView(view, category = null) {
   $('#view-title').textContent = category || titles[view];
   $('#section-title').textContent = category ? `${category} list` : view === 'completed' ? 'Finished tasks' : view === 'today' ? 'Today’s focus' : view === 'upcoming' ? 'On the horizon' : 'Your tasks';
   $('#section-subtitle').textContent = category ? `Tasks filed under ${category}.` : view === 'completed' ? 'A record of your progress.' : view === 'today' ? 'A short list for a focused day.' : 'Everything in one calm place.';
-  render();
+  render(true);
 }
 
 function openModal(task = null) {
@@ -129,11 +153,11 @@ function openModal(task = null) {
   $('#task-date').value = task?.dueDate || todayKey();
   $('#task-category').value = task?.category || state.category || 'Personal';
   $(`input[name="priority"][value="${task?.priority || 'medium'}"]`).checked = true;
-  $('#task-modal').hidden = false;
+  showModal($('#task-modal'));
   requestAnimationFrame(() => $('#task-title').focus());
 }
 
-function closeModal() { $('#task-modal').hidden = true; state.editingId = null; }
+function closeModal() { hideModal($('#task-modal')); state.editingId = null; }
 
 function saveFromModal(event) {
   event.preventDefault();
@@ -147,14 +171,22 @@ function saveFromModal(event) {
     priority: $('input[name="priority"]:checked').value,
     modifiedAt: Date.now()
   };
-  if (state.editingId) {
-    Object.assign(state.tasks.find((task) => task.id === state.editingId), values);
-    toast('Task updated');
-  } else {
+  const isNew = !state.editingId;
+  if (isNew) {
     state.tasks.unshift({ id: uid(), ...values, completed: false, createdAt: Date.now() });
     toast('Task added');
+  } else {
+    Object.assign(state.tasks.find((task) => task.id === state.editingId), values);
+    toast('Task updated');
   }
   persist(); closeModal(); render(); queueGoogleSync();
+  if (isNew) enterNewest();
+}
+
+// The newest task is state.tasks[0]; drop it into place wherever the current sort put it.
+function enterNewest() {
+  const item = state.tasks[0] && $(`.task-item[data-id="${state.tasks[0].id}"]`);
+  if (item) motion(item, { opacity: [0, 1], y: [-10, 0], scale: [0.97, 1], duration: 460, ease: 'outBack' });
 }
 
 function addQuickTask(event) {
@@ -165,6 +197,7 @@ function addQuickTask(event) {
   state.tasks.unshift({ id: uid(), title, notes: '', dueDate: $('#quick-date-input').value || todayKey(), category: state.category || 'Personal', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now() });
   input.value = '';
   persist(); render(); toast('Task added'); queueGoogleSync();
+  enterNewest();
 }
 
 function taskAction(event) {
@@ -176,7 +209,9 @@ function taskAction(event) {
     task.completed = !task.completed;
     task.completedAt = task.completed ? Date.now() : null;
     task.modifiedAt = Date.now();
-    persist(); render(); toast(task.completed ? 'Nicely done' : 'Task reopened'); queueGoogleSync();
+    persist(); toast(task.completed ? 'Nicely done' : 'Task reopened'); queueGoogleSync();
+    if (visibleTasks().some((entry) => entry.id === task.id)) { render(); popCheck($(`.task-item[data-id="${task.id}"]`)); }
+    else { item.classList.toggle('completed', task.completed); popCheck(item); leaveItem(item).then(() => render()); }
   }
   if (action === 'edit') openModal(task);
   if (action === 'menu') {
@@ -185,6 +220,8 @@ function taskAction(event) {
     menu.className = 'action-menu';
     menu.innerHTML = `<button data-menu="edit">Edit</button>${task.canvasUrl ? '<button data-menu="canvas">Open in Canvas</button>' : ''}<button class="danger" data-menu="delete">Delete</button>`;
     event.target.parentElement.append(menu);
+    menu.style.transformOrigin = 'top right';
+    motion(menu, { opacity: [0, 1], y: [-4, 0], scale: [0.95, 1], duration: 180, ease: 'outQuad' });
     menu.addEventListener('click', (menuEvent) => {
       if (menuEvent.target.dataset.menu === 'edit') openModal(task);
       if (menuEvent.target.dataset.menu === 'canvas') window.daymark.openExternal(task.canvasUrl);
@@ -195,7 +232,8 @@ function taskAction(event) {
           task._deleted = true;
           task.modifiedAt = Date.now();
         } else state.tasks = state.tasks.filter((entry) => entry.id !== task.id);
-        persist(); render(); toast('Task deleted'); queueGoogleSync();
+        persist(); toast('Task deleted'); queueGoogleSync();
+        leaveItem(item).then(() => render());
       }
     }, { once: true });
   }
@@ -231,12 +269,12 @@ function setGoogleMessage(message, isError = false) {
 }
 
 function openGoogleModal() {
-  $('#google-modal').hidden = false;
+  showModal($('#google-modal'));
   setGoogleMessage('');
 }
 
 function closeGoogleModal() {
-  $('#google-modal').hidden = true;
+  hideModal($('#google-modal'));
 }
 
 async function connectGoogle() {
@@ -435,9 +473,9 @@ async function init() {
     await syncGoogle(false);
   });
   $('#disconnect-google').addEventListener('click', disconnectGoogle);
-  $('#canvas-button').addEventListener('click', () => { $('#canvas-modal').hidden = false; setCanvasMessage(''); });
-  $('#close-canvas-modal').addEventListener('click', () => { $('#canvas-modal').hidden = true; });
-  $('#canvas-modal').addEventListener('click', (event) => { if (event.target === event.currentTarget) event.currentTarget.hidden = true; });
+  $('#canvas-button').addEventListener('click', () => { showModal($('#canvas-modal')); setCanvasMessage(''); });
+  $('#close-canvas-modal').addEventListener('click', () => hideModal($('#canvas-modal')));
+  $('#canvas-modal').addEventListener('click', (event) => { if (event.target === event.currentTarget) hideModal(event.currentTarget); });
   $('#connect-canvas').addEventListener('click', connectCanvas);
   $('#refresh-canvas').addEventListener('click', () => refreshCanvas(false));
   $('#disconnect-canvas').addEventListener('click', disconnectCanvas);
@@ -455,7 +493,7 @@ async function init() {
   $('.launcher-stage').addEventListener('pointerdown', startLauncherDrag);
   $('#folder-launcher').addEventListener('mousemove', moveFolderPapers);
   $('#folder-launcher').addEventListener('mouseleave', resetFolderPapers);
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); $('#canvas-modal').hidden = true; } });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); hideModal($('#canvas-modal')); } });
   document.addEventListener('click', (event) => { if (!event.target.closest('.task-actions')) $$('.action-menu').forEach((menu) => menu.remove()); });
   render();
   try {
@@ -528,6 +566,9 @@ async function openWidget() {
   await window.daymark.setWidgetOpen(true);
   document.body.classList.remove('is-collapsed');
   document.body.classList.add('is-open');
+  // Reveal the widget top to bottom, then the tasks.
+  motion('.widget-titlebar, .topbar, .widget-tabs, .summary-row, .panel-heading, .quick-add', { opacity: [0, 1], y: [10, 0], delay: window.anime.stagger(45), duration: 460, ease: 'outQuart' });
+  enterList($('#task-list').children);
 }
 
 async function collapseWidget() {
@@ -538,6 +579,7 @@ async function collapseWidget() {
   resetFolderPapers();
   await new Promise((resolve) => setTimeout(resolve, 140));
   await window.daymark.setWidgetOpen(false);
+  motion('#folder-launcher', { opacity: [0, 1], scale: [0.85, 1], duration: 520, ease: 'outBack' });
 }
 
 init();

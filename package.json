@@ -1,6 +1,6 @@
 {
   "name": "daymark-desktop",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "A calm, focused desktop to-do list.",
   "main": "main.js",
   "scripts": {
@@ -23,7 +23,8 @@
       "preload.js",
       "index.html",
       "styles.css",
-      "renderer.js"
+      "renderer.js",
+      "anime.umd.min.js"
     ],
     "win": {
       "target": "nsis"
