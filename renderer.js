@@ -16,9 +16,8 @@ const $$ = (selector) => [...document.querySelectorAll(selector)];
 const dateKey = (date) => new Date(date).toLocaleDateString('en-CA');
 const todayKey = () => dateKey(Date.now());
 const uid = () => `${Date.now()}-${Math.random().toString(16).slice(2)}`;
-// Motion via Anime.js v4 (anime.umd.min.js exposes `anime`). Off when Windows "Animation effects" is off.
-const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
-const motion = (targets, params) => reduceMotion.matches ? Promise.resolve() : window.anime.animate(targets, params);
+// Motion via Anime.js v4 (anime.umd.min.js exposes `anime`). Always on, even when Windows "Animation effects" is off.
+const motion = (targets, params) => window.anime.animate(targets, params);
 const enterList = (items) => motion([...items].slice(0, 12), { opacity: [0, 1], y: [8, 0], delay: window.anime.stagger(28), duration: 420, ease: 'outQuart' });
 const popCheck = (item) => motion(item.querySelector('.check-button'), { scale: [1, 1.28, 1], duration: 340, ease: 'outQuad' });
 function leaveItem(item) {
@@ -133,13 +132,27 @@ function updateSummary() {
   $('#progress-detail').textContent = todayTotal ? `${todayDone} of ${todayTotal} today tasks done.` : 'Start with one small win.';
 }
 
+// Swiss-poster headline: the last word sits in a black block, e.g. "all [tasks]".
+function posterTitle(text) {
+  const words = text.toLowerCase().split(' ');
+  const last = words.pop();
+  return `${words.length ? `<span>${escapeHtml(words.join(' '))}</span> ` : ''}<mark>${escapeHtml(last)}</mark>`;
+}
+
+// The block wipes open left to right while the plain word slides in.
+function revealTitle() {
+  motion('#view-title mark', { clipPath: ['inset(0 100% 0 0)', 'inset(0 0% 0 0)'], duration: 620, ease: 'inOutQuart' });
+  motion('#view-title span', { opacity: [0, 1], x: [-10, 0], duration: 480, ease: 'outQuart' });
+}
+
 function setView(view, category = null) {
   state.view = view;
   state.category = category;
   $$('.nav-item, .widget-tab').forEach((button) => button.classList.toggle('active', !category && button.dataset.view === view));
   $$('.list-key button').forEach((button) => button.classList.toggle('active', button.dataset.category === category));
   const titles = { all: 'All tasks', today: 'Today', upcoming: 'Upcoming', completed: 'Completed' };
-  $('#view-title').textContent = category || titles[view];
+  $('#view-title').innerHTML = posterTitle(category || titles[view]);
+  revealTitle();
   $('#section-title').textContent = category ? `${category} list` : view === 'completed' ? 'Finished tasks' : view === 'today' ? 'Today’s focus' : view === 'upcoming' ? 'On the horizon' : 'Your tasks';
   $('#section-subtitle').textContent = category ? `Tasks filed under ${category}.` : view === 'completed' ? 'A record of your progress.' : view === 'today' ? 'A short list for a focused day.' : 'Everything in one calm place.';
   render(true);
@@ -569,6 +582,7 @@ async function openWidget() {
   // Reveal the widget top to bottom, then the tasks.
   motion('.widget-titlebar, .topbar, .widget-tabs, .summary-row, .panel-heading, .quick-add', { opacity: [0, 1], y: [10, 0], delay: window.anime.stagger(45), duration: 460, ease: 'outQuart' });
   enterList($('#task-list').children);
+  revealTitle();
 }
 
 async function collapseWidget() {

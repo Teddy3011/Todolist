@@ -299,3 +299,111 @@ h1, h2, h3, button, input, textarea, select, .widget-brand, .task-main strong {
 .google-message { min-height: 18px; margin: 15px 0 0; color: #bdb5a6; font-size: 10px; line-height: 1.4; }
 .google-message.error { color: #f1ead8; }
 .google-modal .primary-button:disabled, .google-modal .outline-button:disabled { opacity: .45; cursor: wait; }
+
+/* Swiss poster theme: paper, black ink, tight grotesk, inverted blocks, crop marks. Overrides the dark theme above. */
+@media (max-width: 600px) {
+  body.is-open {
+    --swiss-paper: #ecebe7;
+    --swiss-ink: #111;
+    --swiss-muted: #6d6c68;
+    --swiss-rule: #cfcdc7;
+    --swiss-font: "Neue Haas Grotesk Display Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    background: transparent;
+  }
+  .is-open .app-shell { position: relative; border: 1px solid var(--swiss-rule); border-radius: 3px; background: var(--swiss-paper); color: var(--swiss-ink); box-shadow: 0 18px 50px rgba(0,0,0,.28); }
+  .is-open .app-shell::before { content: ""; position: absolute; inset: 0; z-index: 30; background: url("grain.svg"); opacity: .22; mix-blend-mode: multiply; pointer-events: none; }
+  .is-open .main { background: transparent; scrollbar-color: #b9b7b1 transparent; }
+  .is-open .main, .is-open .main h1, .is-open .main h2, .is-open .main button, .is-open .main input, .is-open .main select, .is-open .widget-brand, .is-open .task-main strong, .is-open .modal, .is-open .modal h2, .is-open .modal input, .is-open .modal textarea, .is-open .modal select, .is-open .modal button, .is-open .toast { font-family: var(--swiss-font); }
+
+  /* titlebar: tiny meta, black ink */
+  .is-open .widget-titlebar { background: transparent; border-bottom: 1px solid var(--swiss-ink); color: var(--swiss-ink); }
+  .is-open .widget-brand { font-size: 13px; font-weight: 700; letter-spacing: -.04em; text-transform: lowercase; }
+  .is-open .mini-mark { border: 0; border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .window-button { border-radius: 0; color: var(--swiss-ink); font-family: var(--swiss-font); }
+  .is-open .window-button:hover, .is-open .window-button.close:hover { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .window-button.active { color: var(--swiss-ink); }
+  .is-open .google-window-button span { background: #b5b3ad; }
+  .is-open .google-window-button span.connected { background: var(--swiss-ink); box-shadow: 0 0 0 2px var(--swiss-paper); }
+
+  /* headline "all [tasks]": three sizes only, like the poster's 8 / 16 / 54pt */
+  .is-open .topbar { align-items: flex-end; padding: 16px 2px 14px; }
+  .is-open .date-block::before { content: "+"; display: block; margin-bottom: 10px; font: 400 18px/1 var(--swiss-font); }
+  .is-open .date-block span { color: var(--swiss-ink); font-size: 8px; font-weight: 500; letter-spacing: 0; text-transform: lowercase; }
+  .is-open h1 { margin-top: 8px; color: var(--swiss-ink); font: 700 42px/.92 var(--swiss-font); letter-spacing: -.065em; text-transform: lowercase; }
+  .is-open h1 mark { display: inline-block; padding: 0 .08em .06em .04em; background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .primary-button { border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); box-shadow: none; }
+  .is-open .primary-button:hover { background: #333; }
+
+  /* tabs: plain words, the active one knocked out of a black block */
+  .is-open .widget-tabs { border: 0; border-radius: 0; background: transparent; gap: 2px; margin-bottom: 14px; }
+  .is-open .widget-tab { border: 0; border-radius: 0; padding: 5px 4px; background: transparent; color: var(--swiss-muted); font-size: 11px; font-weight: 600; letter-spacing: -.02em; text-transform: lowercase; }
+  .is-open .widget-tab:hover { color: var(--swiss-ink); }
+  .is-open .widget-tab.active { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .widget-tab b, .is-open .widget-tab.active b { min-width: 0; height: auto; margin-left: 3px; background: transparent; color: inherit; font-size: 8px; vertical-align: super; }
+
+  /* summary as poster meta */
+  .is-open .summary-row { margin: 0 2px 14px; padding: 8px 0 0; border-top: 1px solid var(--swiss-rule); }
+  .is-open .summary-icon { display: none; }
+  .is-open .summary-row strong { color: var(--swiss-ink); font: 700 16px var(--swiss-font); letter-spacing: -.04em; }
+  .is-open .summary-row small { color: var(--swiss-muted); font-size: 8px; text-transform: lowercase; }
+
+  /* task list: no card, heavy rule on top, hairlines between */
+  .is-open .task-panel { position: relative; border: 0; border-top: 2px solid var(--swiss-ink); border-radius: 0; background: transparent; box-shadow: none; }
+  .is-open .task-panel::after { content: "+"; display: block; padding: 10px 2px 0; text-align: right; font: 400 18px/1 var(--swiss-font); }
+  .is-open .panel-heading { padding: 10px 2px 8px; border-bottom: 0; }
+  .is-open .panel-heading h2 { color: var(--swiss-ink); font: 700 16px var(--swiss-font); letter-spacing: -.04em; text-transform: lowercase; }
+  .is-open .panel-heading p { color: var(--swiss-ink); font-size: 10px; font-style: italic; font-weight: 600; text-transform: lowercase; }
+  .is-open #sort-select { width: auto; height: auto; padding: 2px 0; border: 0; border-bottom: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; color: var(--swiss-ink); font-size: 9px; font-weight: 600; text-transform: lowercase; cursor: pointer; }
+  .is-open .date-block h1 span { color: inherit; font: inherit; letter-spacing: inherit; }
+  .is-open .text-button { text-transform: lowercase; }
+  .is-open .quick-add { margin: 4px 2px 6px; padding-left: 2px; border: 0; border-bottom: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; color: var(--swiss-ink); }
+  .is-open .quick-add:focus-within { border-color: var(--swiss-ink); background: rgba(0,0,0,.03); }
+  .is-open .quick-add input { color: var(--swiss-ink) !important; }
+  .is-open input::placeholder, .is-open textarea::placeholder { color: #8d8b86; text-transform: lowercase; }
+  .is-open .task-list { padding: 0 2px 4px; }
+  .is-open .task-item { border-bottom: 1px solid var(--swiss-rule); }
+  .is-open .task-main strong { color: var(--swiss-ink); font-size: 13px; font-weight: 600; letter-spacing: -.02em; }
+  .is-open .task-meta, .is-open .due { color: var(--swiss-muted); text-transform: lowercase; }
+  .is-open .category-pill { padding: 0 3px; border: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; color: var(--swiss-ink); }
+  .is-open .priority-dot { border-radius: 0; }
+  .is-open .priority-dot.high { background: var(--swiss-ink); }
+  .is-open .priority-dot.medium { background: #8d8b86; }
+  .is-open .priority-dot.low { background: #c4c2bc; }
+  .is-open .due.overdue { padding: 1px 3px; background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .check-button { width: 15px; height: 15px; border: 1.5px solid var(--swiss-ink); border-radius: 0; background: transparent; }
+  .is-open .check-button:hover { background: rgba(0,0,0,.08); }
+  .is-open .task-item.completed .check-button { border-color: var(--swiss-ink); background: var(--swiss-ink); }
+  .is-open .task-item.completed .check-button::after { left: 2px; top: -2px; color: var(--swiss-paper); }
+  .is-open .task-item.completed .task-main strong { color: #9a9893; text-decoration: line-through; }
+  .is-open .more-button { border-radius: 0; color: var(--swiss-ink); }
+  .is-open .more-button:hover { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .action-menu { border: 1px solid var(--swiss-ink); border-radius: 0; background: var(--swiss-paper); box-shadow: 4px 4px 0 var(--swiss-ink); }
+  .is-open .action-menu button { border-radius: 0; color: var(--swiss-ink); text-transform: lowercase; }
+  .is-open .action-menu button:hover { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .action-menu .danger { color: var(--swiss-ink); }
+  .is-open .empty-check { border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .empty-state h3 { color: var(--swiss-ink); font-family: var(--swiss-font); letter-spacing: -.04em; text-transform: lowercase; }
+  .is-open .empty-state p { color: var(--swiss-muted); text-transform: lowercase; }
+  .is-open .empty-state button { color: var(--swiss-ink); text-decoration: underline; }
+
+  /* dialogs: paper sheet, black frame, offset shadow */
+  .is-open .modal-backdrop { background: rgba(236,235,231,.72); backdrop-filter: blur(2px); }
+  .is-open .modal { border: 1.5px solid var(--swiss-ink); border-radius: 0; background: var(--swiss-paper); color: var(--swiss-ink); box-shadow: 6px 6px 0 var(--swiss-ink); }
+  .is-open .modal-head h2 { color: var(--swiss-ink); font-size: 30px; font-weight: 700; letter-spacing: -.06em; text-transform: lowercase; }
+  .is-open .modal-kicker { color: var(--swiss-ink); font-size: 8px; letter-spacing: 0; text-transform: lowercase; }
+  .is-open .icon-button, .is-open .text-button { color: var(--swiss-ink); }
+  .is-open .modal > label, .is-open .field-row label, .is-open legend, .is-open .google-client-label { color: var(--swiss-ink); font-size: 10px; font-weight: 600; text-transform: lowercase; }
+  .is-open .modal input, .is-open .modal textarea, .is-open .modal select { border: 0; border-bottom: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; color: var(--swiss-ink); }
+  .is-open .modal input:focus, .is-open .modal textarea:focus, .is-open .modal select:focus { border-color: var(--swiss-ink); background: rgba(0,0,0,.04); box-shadow: none; }
+  .is-open .priority-options span { border: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; color: var(--swiss-ink); text-transform: lowercase; }
+  .is-open .priority-options input:checked + span { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .modal .primary-button { border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); text-transform: lowercase; }
+  .is-open .google-intro, .is-open .google-steps, .is-open .google-message, .is-open .last-sync, .is-open .connected-badge small { color: #4a4945; }
+  .is-open .google-steps strong, .is-open .google-message.error { color: var(--swiss-ink); }
+  .is-open .outline-button { border: 1px solid var(--swiss-ink); border-radius: 0; color: var(--swiss-ink); text-transform: lowercase; }
+  .is-open .outline-button:hover { background: var(--swiss-ink); color: var(--swiss-paper); }
+  .is-open .connected-badge { border: 1px solid var(--swiss-ink); border-radius: 0; background: transparent; }
+  .is-open .connected-badge > span { border-radius: 0; background: var(--swiss-ink); }
+  .is-open .disconnect-button { color: var(--swiss-ink); }
+  .is-open .toast { border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); text-transform: lowercase; }
+}
