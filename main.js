@@ -3,6 +3,7 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { shell } = require('electron');
 const GoogleTasksService = require('./google-tasks');
+const canvas = require('./canvas');
 
 let mainWindow;
 let googleTasks;
@@ -92,10 +93,15 @@ app.whenReady().then(() => {
   ipcMain.handle('google:set-list', (_event, listId) => googleTasks.setSelectedList(listId));
   ipcMain.handle('google:sync', (_event, payload) => googleTasks.sync(payload?.tasks, payload?.listId));
   ipcMain.handle('google:disconnect', () => googleTasks.disconnect());
-  ipcMain.on('open-external', (_event, url) => {
+  ipcMain.handle('canvas:status', () => canvas.status());
+  ipcMain.handle('canvas:set-feed', (_event, url) => canvas.setFeedUrl(url));
+  ipcMain.handle('canvas:fetch', () => canvas.fetchEvents());
+  ipcMain.handle('canvas:hide', (_event, uid) => canvas.hide(String(uid || '')));
+  ipcMain.on('open-external', async (_event, url) => {
     try {
       const parsed = new URL(url);
-      if (parsed.protocol === 'https:' && ['console.cloud.google.com', 'developers.google.com'].includes(parsed.hostname)) shell.openExternal(parsed.toString());
+      const canvasHost = (await canvas.status()).host;
+      if (parsed.protocol === 'https:' && ['console.cloud.google.com', 'developers.google.com', canvasHost].filter(Boolean).includes(parsed.hostname)) shell.openExternal(parsed.toString());
     } catch {}
   });
   let dragStart = null;

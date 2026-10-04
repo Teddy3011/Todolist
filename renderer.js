@@ -183,11 +183,14 @@ function taskAction(event) {
     $$('.action-menu').forEach((menu) => menu.remove());
     const menu = document.createElement('div');
     menu.className = 'action-menu';
-    menu.innerHTML = '<button data-menu="edit">Edit</button><button class="danger" data-menu="delete">Delete</button>';
+    menu.innerHTML = `<button data-menu="edit">Edit</button>${task.canvasUrl ? '<button data-menu="canvas">Open in Canvas</button>' : ''}<button class="danger" data-menu="delete">Delete</button>`;
     event.target.parentElement.append(menu);
     menu.addEventListener('click', (menuEvent) => {
       if (menuEvent.target.dataset.menu === 'edit') openModal(task);
+      if (menuEvent.target.dataset.menu === 'canvas') window.daymark.openExternal(task.canvasUrl);
       if (menuEvent.target.dataset.menu === 'delete') {
+        // Remember deleted Canvas items so the next refresh doesn't bring them back.
+        if (task.canvasUid) window.daymark.canvasHide(task.canvasUid);
         if (task.googleId) {
           task._deleted = true;
           task.modifiedAt = Date.now();
@@ -325,6 +328,78 @@ async function disconnectGoogle() {
   } catch (error) { setGoogleMessage(cleanError(error), true); }
 }
 
+// Canvas items become tasks in the Canvas list. Refreshes update title/date but keep your completed state.
+function mergeCanvasEvents(events) {
+  const byUid = new Map(state.tasks.filter((task) => task.canvasUid && !task._deleted).map((task) => [task.canvasUid, task]));
+  let added = 0;
+  for (const event of events) {
+    const task = byUid.get(event.uid);
+    if (!task) {
+      state.tasks.push({ id: uid(), title: event.title, notes: '', dueDate: event.dueDate, category: 'Canvas', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now(), canvasUid: event.uid, canvasUrl: event.url });
+      added++;
+    } else if (task.title !== event.title || task.dueDate !== event.dueDate) {
+      Object.assign(task, { title: event.title, dueDate: event.dueDate, canvasUrl: event.url, modifiedAt: Date.now() });
+    }
+  }
+  return added;
+}
+
+let canvasConnected = false;
+function renderCanvasStatus(status) {
+  canvasConnected = status.connected;
+  $('#canvas-disconnected').hidden = status.connected;
+  $('#canvas-connected').hidden = !status.connected;
+  $('#canvas-dot').classList.toggle('connected', status.connected);
+  if (status.host) $('#canvas-host').textContent = `${status.host} · link encrypted on this PC.`;
+}
+
+function setCanvasMessage(message, isError = false) {
+  $('#canvas-message').textContent = message;
+  $('#canvas-message').classList.toggle('error', isError);
+}
+
+let canvasRefreshing = false;
+async function refreshCanvas(silent = false) {
+  if (!canvasConnected || canvasRefreshing) return;
+  canvasRefreshing = true;
+  if (!silent) setCanvasMessage('Refreshing…');
+  try {
+    const added = mergeCanvasEvents(await window.daymark.canvasFetch());
+    persist(); render(); queueGoogleSync();
+    $('#canvas-last-sync').textContent = `Last refreshed ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.`;
+    if (!silent) setCanvasMessage(added ? `Added ${added} new Canvas item${added === 1 ? '' : 's'}.` : 'Everything is up to date.');
+  } catch (error) {
+    setCanvasMessage(cleanError(error), true);
+    if (!silent) toast('Canvas refresh failed');
+  } finally {
+    canvasRefreshing = false;
+  }
+}
+
+async function connectCanvas() {
+  const button = $('#connect-canvas');
+  button.disabled = true;
+  setCanvasMessage('Checking the feed…');
+  try {
+    renderCanvasStatus(await window.daymark.canvasSetFeed($('#canvas-feed-url').value));
+    if (!canvasConnected) throw new Error('Paste your Canvas calendar feed link first.');
+    $('#canvas-feed-url').value = '';
+    await refreshCanvas();
+    toast('Canvas connected');
+  } catch (error) {
+    setCanvasMessage(cleanError(error), true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function disconnectCanvas() {
+  try {
+    renderCanvasStatus(await window.daymark.canvasSetFeed(''));
+    setCanvasMessage('Canvas disconnected. Imported tasks stay in your list.');
+  } catch (error) { setCanvasMessage(cleanError(error), true); }
+}
+
 async function init() {
   await window.daymark.setWidgetOpen(false);
   document.body.classList.add('is-collapsed');
@@ -360,6 +435,12 @@ async function init() {
     await syncGoogle(false);
   });
   $('#disconnect-google').addEventListener('click', disconnectGoogle);
+  $('#canvas-button').addEventListener('click', () => { $('#canvas-modal').hidden = false; setCanvasMessage(''); });
+  $('#close-canvas-modal').addEventListener('click', () => { $('#canvas-modal').hidden = true; });
+  $('#canvas-modal').addEventListener('click', (event) => { if (event.target === event.currentTarget) event.currentTarget.hidden = true; });
+  $('#connect-canvas').addEventListener('click', connectCanvas);
+  $('#refresh-canvas').addEventListener('click', () => refreshCanvas(false));
+  $('#disconnect-canvas').addEventListener('click', disconnectCanvas);
   let pinned = true;
   $('#pin-window').addEventListener('click', async () => {
     pinned = await window.daymark.setPinned(!pinned);
@@ -374,14 +455,19 @@ async function init() {
   $('.launcher-stage').addEventListener('pointerdown', startLauncherDrag);
   $('#folder-launcher').addEventListener('mousemove', moveFolderPapers);
   $('#folder-launcher').addEventListener('mouseleave', resetFolderPapers);
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); } });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); $('#canvas-modal').hidden = true; } });
   document.addEventListener('click', (event) => { if (!event.target.closest('.task-actions')) $$('.action-menu').forEach((menu) => menu.remove()); });
   render();
   try {
     renderGoogleStatus(await window.daymark.googleStatus());
     if (state.google.connected) syncGoogle(true);
   } catch (error) { console.error('Could not read Google Tasks status:', error); }
+  try {
+    renderCanvasStatus(await window.daymark.canvasStatus());
+    refreshCanvas(true);
+  } catch (error) { console.error('Could not read Canvas status:', error); }
   setInterval(() => syncGoogle(true), 5 * 60 * 1000);
+  setInterval(() => refreshCanvas(true), 30 * 60 * 1000);
 }
 
 function moveFolderPapers(event) {

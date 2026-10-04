@@ -16,5 +16,9 @@ contextBridge.exposeInMainWorld('daymark', {
   googleSetList: (listId) => ipcRenderer.invoke('google:set-list', listId),
   googleSync: (payload) => ipcRenderer.invoke('google:sync', payload),
   googleDisconnect: () => ipcRenderer.invoke('google:disconnect'),
+  canvasStatus: () => ipcRenderer.invoke('canvas:status'),
+  canvasSetFeed: (url) => ipcRenderer.invoke('canvas:set-feed', url),
+  canvasFetch: () => ipcRenderer.invoke('canvas:fetch'),
+  canvasHide: (uid) => ipcRenderer.invoke('canvas:hide', uid),
   openExternal: (url) => ipcRenderer.send('open-external', url)
 });

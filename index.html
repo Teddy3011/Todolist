@@ -60,6 +60,7 @@
         <div class="widget-brand"><span class="mini-mark">✓</span><strong>Daymark</strong></div>
         <div class="window-controls">
           <button id="google-button" class="window-button google-window-button" title="Google Tasks" aria-label="Google Tasks">G<span id="google-dot"></span></button>
+          <button id="canvas-button" class="window-button google-window-button" title="Canvas" aria-label="Canvas">C<span id="canvas-dot"></span></button>
           <button id="collapse-widget" class="window-button" title="Close to folder" aria-label="Close to folder">⌄</button>
           <button id="pin-window" class="window-button active" title="Keep on top" aria-label="Keep on top">◆</button>
           <button id="minimize-window" class="window-button" title="Minimize" aria-label="Minimize">−</button>
@@ -122,7 +123,7 @@
       <label>Notes<textarea id="task-notes" maxlength="500" placeholder="Add details, context, or a reminder…"></textarea></label>
       <div class="field-row">
         <label>Due date<input id="task-date" type="date"></label>
-        <label>List<select id="task-category"><option>Personal</option><option>Work</option><option>Errands</option><option>Google</option></select></label>
+        <label>List<select id="task-category"><option>Personal</option><option>Work</option><option>Errands</option><option>Google</option><option>Canvas</option></select></label>
       </div>
       <fieldset><legend>Priority</legend><div class="priority-options">
         <label><input type="radio" name="priority" value="low"><span>Low</span></label>
@@ -165,6 +166,36 @@
         <button type="button" class="text-button disconnect-button" id="disconnect-google">Disconnect Google</button>
       </div>
       <p id="google-message" class="google-message" role="status"></p>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="canvas-modal" hidden>
+    <section class="modal google-modal" role="dialog" aria-modal="true" aria-labelledby="canvas-modal-title">
+      <div class="modal-head">
+        <div><span class="modal-kicker">SCHOOL</span><h2 id="canvas-modal-title">Canvas</h2></div>
+        <button type="button" class="icon-button" id="close-canvas-modal" aria-label="Close">×</button>
+      </div>
+      <div id="canvas-disconnected">
+        <p class="google-intro">Bring your Canvas assignments and events into a Canvas list. Read-only: nothing is changed in Canvas.</p>
+        <ol class="google-steps">
+          <li>In Canvas, open <strong>Calendar</strong>.</li>
+          <li>Select <strong>Calendar Feed</strong> and copy the link.</li>
+          <li>Paste it below.</li>
+        </ol>
+        <label class="google-client-label">Calendar feed link
+          <input id="canvas-feed-url" autocomplete="off" spellcheck="false" placeholder="https://…/feeds/calendars/user_….ics">
+        </label>
+        <button type="button" class="primary-button google-connect-button" id="connect-canvas">Connect Canvas</button>
+      </div>
+      <div id="canvas-connected" hidden>
+        <div class="connected-badge"><span></span><div><strong>Canvas connected</strong><small id="canvas-host">The feed link is encrypted on this PC.</small></div></div>
+        <div class="google-actions">
+          <button type="button" class="primary-button" id="refresh-canvas">Refresh now</button>
+          <button type="button" class="outline-button" id="disconnect-canvas">Disconnect</button>
+        </div>
+        <p class="last-sync" id="canvas-last-sync">Not refreshed yet.</p>
+      </div>
+      <p id="canvas-message" class="google-message" role="status"></p>
     </section>
   </div>
 

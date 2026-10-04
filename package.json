@@ -1,6 +1,6 @@
 {
   "name": "daymark-desktop",
-  "version": "1.6.1",
+  "version": "1.7.0",
   "description": "A calm, focused desktop to-do list.",
   "main": "main.js",
   "scripts": {
@@ -19,6 +19,7 @@
     "files": [
       "main.js",
       "google-tasks.js",
+      "canvas.js",
       "preload.js",
       "index.html",
       "styles.css",
