@@ -407,3 +407,27 @@ h1, h2, h3, button, input, textarea, select, .widget-brand, .task-main strong {
   .is-open .disconnect-button { color: var(--swiss-ink); }
   .is-open .toast { border-radius: 0; background: var(--swiss-ink); color: var(--swiss-paper); text-transform: lowercase; }
 }
+
+/* Week view, course chips, focus timer */
+@media (max-width: 600px) {
+  .is-open .widget-tabs { grid-template-columns: repeat(5, 1fr); }
+  .day-head { display: flex; justify-content: space-between; align-items: baseline; margin-top: 14px; padding: 0 2px 4px; border-bottom: 2px solid var(--swiss-ink, #111); font-size: 9px; text-transform: lowercase; }
+  .day-head:first-child { margin-top: 4px; }
+  .day-head b { font: 700 16px var(--swiss-font, sans-serif); letter-spacing: -.04em; }
+  .day-head span { color: var(--swiss-muted, #777); }
+  .day-head.heavy span { padding: 1px 4px; background: var(--swiss-ink, #111); color: var(--swiss-paper, #fff); }
+
+  .course-pill { --course: #111; display: inline-flex; align-items: center; gap: 3px; padding: 0 3px; border: 1px solid var(--swiss-ink, #111); border-radius: 0; background: transparent; color: var(--swiss-ink, #111); font: inherit; cursor: pointer; }
+  .course-pill::before { content: ""; width: 6px; height: 6px; background: var(--course); }
+  .course-pill:hover { background: var(--swiss-ink, #111); color: var(--swiss-paper, #fff); }
+  .course-0 { --course: #e2231a; } .course-1 { --course: #1d4ed8; } .course-2 { --course: #f2b705; }
+  .course-3 { --course: #16a34a; } .course-4 { --course: #ea580c; } .course-5 { --course: #7c3aed; }
+
+  .focus-bar { display: flex; align-items: center; gap: 8px; margin: 0 -14px; padding: 7px 14px; background: var(--swiss-ink, #111); color: var(--swiss-paper, #fff); font-size: 10px; text-transform: lowercase; }
+  .focus-bar[hidden] { display: none; }
+  .focus-bar strong { flex: 1; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; font-weight: 600; text-transform: none; }
+  .focus-bar b { font: 700 16px var(--swiss-font, sans-serif); letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
+  .focus-bar button { border: 1px solid currentColor; border-radius: 0; padding: 2px 6px; background: transparent; color: inherit; cursor: pointer; }
+  .focus-badge { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); padding: 1px 5px; background: #111; color: #ecebe7; font: 700 10px "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; pointer-events: none; }
+  .focus-badge[hidden] { display: none; }
+}

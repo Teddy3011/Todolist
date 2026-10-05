@@ -18,6 +18,7 @@
         <span class="folder__front right"></span>
       </span>
     </button>
+    <span id="focus-badge" class="focus-badge" hidden>25:00</span>
   </section>
   <div class="app-shell">
     <aside class="sidebar">
@@ -67,6 +68,7 @@
           <button id="close-window" class="window-button close" title="Close" aria-label="Close">×</button>
         </div>
       </div>
+      <div id="focus-bar" class="focus-bar" hidden><span>focus</span><strong id="focus-title"></strong><b id="focus-time">25:00</b><button type="button" id="focus-stop">stop</button></div>
       <header class="topbar">
         <div class="date-block"><span id="eyebrow-date"></span><h1 id="view-title"><span>all</span> <mark>tasks</mark></h1></div>
         <div class="top-actions">
@@ -78,6 +80,7 @@
       <nav class="widget-tabs" aria-label="Widget task views">
         <button class="widget-tab active" data-view="all">All <b id="widget-count-all">0</b></button>
         <button class="widget-tab" data-view="today">Today</button>
+        <button class="widget-tab" data-view="week">Week</button>
         <button class="widget-tab" data-view="upcoming">Next</button>
         <button class="widget-tab" data-view="completed">Done</button>
       </nav>
@@ -150,6 +153,9 @@
         <button type="button" class="outline-button" id="open-google-console">Open Google Cloud Console ↗</button>
         <label class="google-client-label">OAuth client ID
           <input id="google-client-id" autocomplete="off" spellcheck="false" placeholder="…apps.googleusercontent.com">
+        </label>
+        <label class="google-client-label">Client secret
+          <input id="google-client-secret" type="password" autocomplete="off" spellcheck="false" placeholder="GOCSPX-… (if Google asks for it)">
         </label>
         <button type="button" class="primary-button google-connect-button" id="connect-google">Connect Google account</button>
       </div>

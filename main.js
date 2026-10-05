@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, globalShortcut, ipcMain, screen } = require('electron');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { shell } = require('electron');
@@ -7,6 +7,19 @@ const canvas = require('./canvas');
 
 let mainWindow;
 let googleTasks;
+// First free combo wins; Ctrl+Alt+Space is often taken by other apps.
+const QUICK_ADD_SHORTCUTS = process.platform === 'darwin' ? ['Command+Shift+Space', 'Command+Option+N'] : ['Control+Alt+N', 'Alt+Shift+Space', 'Control+Shift+Space'];
+let quickAddShortcut = '';
+const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
+
+async function loadSettings() {
+  try { return JSON.parse(await fs.readFile(settingsFile(), 'utf8')); } catch { return {}; }
+}
+
+// Reuse the saved folder position only if it is still on a connected screen.
+function onScreen(x, y) {
+  return Number.isFinite(x) && Number.isFinite(y) && screen.getAllDisplays().some(({ workArea: a }) => x >= a.x && y >= a.y && x < a.x + a.width - 40 && y < a.y + a.height - 40);
+}
 
 function dataFile() {
   return path.join(app.getPath('userData'), 'tasks.json');
@@ -40,8 +53,10 @@ function saveTasks(_event, tasks) {
   return saveQueue;
 }
 
-function createWindow() {
+async function createWindow() {
+  const { x, y } = await loadSettings();
   mainWindow = new BrowserWindow({
+    ...(onScreen(x, y) ? { x, y } : {}),
     width: 112,
     height: 100,
     minWidth: 100,
@@ -63,6 +78,15 @@ function createWindow() {
 
   mainWindow.loadFile('index.html');
   mainWindow.once('ready-to-show', () => mainWindow.show());
+  // Remember where the folder sits (collapsed size only), debounced while dragging.
+  let saveTimer;
+  mainWindow.on('move', () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      const bounds = mainWindow?.getBounds();
+      if (bounds && bounds.width < 200) fs.writeFile(settingsFile(), JSON.stringify({ x: bounds.x, y: bounds.y }), 'utf8').catch(() => {});
+    }, 400);
+  });
 }
 
 function setWidgetOpen(open) {
@@ -87,7 +111,7 @@ app.whenReady().then(() => {
   ipcMain.handle('tasks:load', loadTasks);
   ipcMain.handle('tasks:save', saveTasks);
   ipcMain.handle('google:status', () => googleTasks.status());
-  ipcMain.handle('google:set-client-id', (_event, clientId) => googleTasks.setClientId(clientId));
+  ipcMain.handle('google:set-client-id', (_event, clientId, clientSecret) => googleTasks.setClientId(clientId, clientSecret));
   ipcMain.handle('google:connect', () => googleTasks.connect());
   ipcMain.handle('google:refresh-lists', () => googleTasks.refreshLists());
   ipcMain.handle('google:set-list', (_event, listId) => googleTasks.setSelectedList(listId));
@@ -110,19 +134,31 @@ app.whenReady().then(() => {
     if (dragStart) mainWindow?.setPosition(Math.round(dragStart[0] + dx), Math.round(dragStart[1] + dy));
   });
   ipcMain.on('window:minimize', () => mainWindow?.minimize());
+  ipcMain.on('window:show', () => { mainWindow?.show(); mainWindow?.focus(); });
   ipcMain.on('window:close', () => mainWindow?.close());
   ipcMain.handle('window:set-widget-open', (_event, open) => setWidgetOpen(Boolean(open)));
   ipcMain.handle('window:set-pinned', (_event, pinned) => {
     mainWindow?.setAlwaysOnTop(Boolean(pinned));
     return mainWindow?.isAlwaysOnTop() ?? false;
   });
+  if (process.platform === 'win32') app.setAppUserModelId('com.daymark.desktop');
+  if (app.isPackaged) app.setLoginItemSettings({ openAtLogin: true });
   createWindow();
+  // Global quick add: bring the widget up with the add field focused.
+  const showQuickAdd = () => {
+    mainWindow?.show();
+    mainWindow?.focus();
+    mainWindow?.webContents.send('quick-add');
+  };
+  quickAddShortcut = QUICK_ADD_SHORTCUTS.find((combo) => globalShortcut.register(combo, showQuickAdd)) || '';
+  if (!quickAddShortcut) console.error('No quick-add shortcut could be registered; other apps hold them all.');
+  ipcMain.handle('quick-add:shortcut', () => quickAddShortcut);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+// Quit on close everywhere; a widget shouldn't linger in the macOS Dock with no window.
+app.on('window-all-closed', () => app.quit());
+app.on('will-quit', () => globalShortcut.unregisterAll());

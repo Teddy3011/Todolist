@@ -7,7 +7,9 @@ const state = {
   editingId: null,
   google: { connected: false, lists: [], selectedListId: '' },
   syncing: false,
-  lastSyncedAt: null
+  lastSyncedAt: null,
+  course: null,
+  focus: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -59,6 +61,11 @@ async function persist() {
 
 function isToday(task) { return task.dueDate === todayKey(); }
 function isUpcoming(task) { return task.dueDate && task.dueDate > todayKey(); }
+const addDays = (days) => { const date = new Date(); date.setDate(date.getDate() + days); return dateKey(date); };
+function isThisWeek(task) { return task.dueDate && task.dueDate <= addDays(6); }
+// Canvas titles end with the course, e.g. "Essay 1 [ENG 101]".
+const courseOf = (task) => /\[([^\]]+)\]\s*$/.exec(task.title || '')?.[1] || null;
+const courseColor = (course) => [...course].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 7) % 6;
 function priorityScore(priority) { return { high: 0, medium: 1, low: 2 }[priority] ?? 3; }
 
 function visibleTasks() {
@@ -66,20 +73,25 @@ function visibleTasks() {
     if (task._deleted) return false;
     if (state.view === 'today' && (!isToday(task) || task.completed)) return false;
     if (state.view === 'upcoming' && (!isUpcoming(task) || task.completed)) return false;
+    if (state.view === 'week' && (!isThisWeek(task) || task.completed)) return false;
     if (state.view === 'completed' && !task.completed) return false;
     if (state.view === 'all' && task.completed) return false;
     if (state.category && task.category !== state.category) return false;
+    if (state.course && courseOf(task) !== state.course) return false;
     const haystack = `${task.title} ${task.notes} ${task.category}`.toLowerCase();
     return haystack.includes(state.query.toLowerCase());
   });
 
   return tasks.sort((a, b) => {
+    if (state.view === 'week') return a.dueDate.localeCompare(b.dueDate) || priorityScore(a.priority) - priorityScore(b.priority);
     if (state.sort === 'created') return b.createdAt - a.createdAt;
     if (state.sort === 'priority') return priorityScore(a.priority) - priorityScore(b.priority);
     if (state.sort === 'due') return (a.dueDate || '9999').localeCompare(b.dueDate || '9999');
     return Number(b.dueDate === todayKey()) - Number(a.dueDate === todayKey()) || priorityScore(a.priority) - priorityScore(b.priority) || (a.dueDate || '9999').localeCompare(b.dueDate || '9999');
   });
 }
+
+const weekdayLabel = (key) => key === todayKey() ? 'today' : key === addDays(1) ? 'tomorrow' : `${new Date(`${key}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' }).toLowerCase()} ${Number(key.slice(8))}`;
 
 function dueLabel(task) {
   if (!task.dueDate) return '';
@@ -93,20 +105,36 @@ function dueLabel(task) {
 function render(animate = false) {
   const tasks = visibleTasks();
   const list = $('#task-list');
-  list.innerHTML = tasks.map((task) => `
+  const perDay = tasks.reduce((counts, task) => ({ ...counts, [task.dueDate]: (counts[task.dueDate] || 0) + 1 }), {});
+  let lastDay = null;
+  list.innerHTML = tasks.map((task) => {
+    const course = courseOf(task);
+    const title = course ? task.title.replace(/\s*\[[^\]]+\]\s*$/, '') : task.title;
+    let head = '';
+    if (state.view === 'week') {
+      const day = task.dueDate < todayKey() ? 'overdue' : task.dueDate;
+      if (day !== lastDay) {
+        const count = day === 'overdue' ? tasks.filter((entry) => entry.dueDate < todayKey()).length : perDay[day];
+        head = `<div class="day-head ${count >= 4 && day !== 'overdue' ? 'heavy' : ''}"><b>${day === 'overdue' ? 'overdue' : weekdayLabel(day)}</b><span>${count} task${count === 1 ? '' : 's'}</span></div>`;
+        lastDay = day;
+      }
+    }
+    return `${head}
     <article class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
       <button class="check-button" data-action="toggle" aria-label="${task.completed ? 'Mark incomplete' : 'Complete task'}"></button>
       <div class="task-main" data-action="edit">
-        <strong>${escapeHtml(task.title)}</strong>
+        <strong>${escapeHtml(title)}</strong>
         <div class="task-meta">
           <span class="priority-dot ${task.priority}"></span><span>${task.priority[0].toUpperCase() + task.priority.slice(1)}</span>
           <span class="category-pill">${escapeHtml(task.category)}</span>
+          ${course ? `<button class="course-pill course-${courseColor(course)}" data-action="course" data-course="${escapeHtml(course)}" title="Show only ${escapeHtml(course)}">${escapeHtml(course)}</button>` : ''}
           ${task.notes ? '<span>• Notes</span>' : ''}
         </div>
       </div>
       <span class="due ${task.dueDate && task.dueDate < todayKey() && !task.completed ? 'overdue' : ''}">${dueLabel(task)}</span>
       <div class="task-actions"><button class="more-button" data-action="menu" aria-label="Task actions">···</button></div>
-    </article>`).join('');
+    </article>`;
+  }).join('');
   $('#empty-state').hidden = tasks.length > 0;
   if (animate) enterList(list.children);
   updateSummary();
@@ -148,13 +176,25 @@ function revealTitle() {
 function setView(view, category = null) {
   state.view = view;
   state.category = category;
+  state.course = null;
   $$('.nav-item, .widget-tab').forEach((button) => button.classList.toggle('active', !category && button.dataset.view === view));
   $$('.list-key button').forEach((button) => button.classList.toggle('active', button.dataset.category === category));
-  const titles = { all: 'All tasks', today: 'Today', upcoming: 'Upcoming', completed: 'Completed' };
+  const titles = { all: 'All tasks', today: 'Today', week: 'This week', upcoming: 'Upcoming', completed: 'Completed' };
   $('#view-title').innerHTML = posterTitle(category || titles[view]);
   revealTitle();
-  $('#section-title').textContent = category ? `${category} list` : view === 'completed' ? 'Finished tasks' : view === 'today' ? 'Today’s focus' : view === 'upcoming' ? 'On the horizon' : 'Your tasks';
-  $('#section-subtitle').textContent = category ? `Tasks filed under ${category}.` : view === 'completed' ? 'A record of your progress.' : view === 'today' ? 'A short list for a focused day.' : 'Everything in one calm place.';
+  $('#section-title').textContent = category ? `${category} list` : view === 'completed' ? 'Finished tasks' : view === 'today' ? 'Today’s focus' : view === 'week' ? 'The next seven days' : view === 'upcoming' ? 'On the horizon' : 'Your tasks';
+  $('#section-subtitle').textContent = category ? `Tasks filed under ${category}.` : view === 'completed' ? 'A record of your progress.' : view === 'today' ? 'A short list for a focused day.' : view === 'week' ? 'Grouped by day; heavy days are marked.' : 'Everything in one calm place.';
+  render(true);
+}
+
+// Course chips filter the list to one course; picking any tab clears it.
+function setCourse(course) {
+  state.course = course;
+  $$('.nav-item, .widget-tab').forEach((button) => button.classList.remove('active'));
+  $('#view-title').innerHTML = posterTitle(course);
+  revealTitle();
+  $('#section-title').textContent = `${course} tasks`;
+  $('#section-subtitle').textContent = 'Pick a tab above to see everything again.';
   render(true);
 }
 
@@ -202,15 +242,37 @@ function enterNewest() {
   if (item) motion(item, { opacity: [0, 1], y: [-10, 0], scale: [0.97, 1], duration: 460, ease: 'outBack' });
 }
 
+// "essay draft fri" → title "essay draft", due the coming Friday (today if it is Friday).
+const WEEKDAYS = { sun: 0, sunday: 0, mon: 1, monday: 1, tue: 2, tues: 2, tuesday: 2, wed: 3, wednesday: 3, thu: 4, thur: 4, thurs: 4, thursday: 4, fri: 5, friday: 5, sat: 6, saturday: 6 };
+function parseQuickDate(text) {
+  const words = text.trim().split(/\s+/);
+  const last = words.length > 1 ? words[words.length - 1].toLowerCase() : '';
+  let days = null;
+  if (['today', 'tod', 'tdy'].includes(last)) days = 0;
+  else if (['tomorrow', 'tmrw', 'tmr', 'tom', 'tmw'].includes(last)) days = 1;
+  else if (last in WEEKDAYS) days = (WEEKDAYS[last] - new Date().getDay() + 7) % 7;
+  return days === null ? { title: text.trim(), dueDate: null } : { title: words.slice(0, -1).join(' '), dueDate: addDays(days) };
+}
+
+let quickAddFromHotkey = false;
+async function startHotkeyQuickAdd() {
+  quickAddFromHotkey = document.body.classList.contains('is-collapsed') || quickAddFromHotkey;
+  await openWidget();
+  $('#quick-title').focus();
+}
+
 function addQuickTask(event) {
   event.preventDefault();
   const input = $('#quick-title');
-  const title = input.value.trim();
+  const parsed = parseQuickDate(input.value);
+  const title = parsed.title;
   if (!title) return;
-  state.tasks.unshift({ id: uid(), title, notes: '', dueDate: $('#quick-date-input').value || todayKey(), category: state.category || 'Personal', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now() });
+  const dueDate = parsed.dueDate || $('#quick-date-input').value || todayKey();
+  state.tasks.unshift({ id: uid(), title, notes: '', dueDate, category: state.category || 'Personal', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now() });
   input.value = '';
-  persist(); render(); toast('Task added'); queueGoogleSync();
+  persist(); render(); toast(`Task added · ${dueLabel({ dueDate }).toLowerCase()}`); queueGoogleSync();
   enterNewest();
+  if (quickAddFromHotkey) { quickAddFromHotkey = false; setTimeout(collapseWidget, 700); }
 }
 
 function taskAction(event) {
@@ -226,19 +288,25 @@ function taskAction(event) {
     if (visibleTasks().some((entry) => entry.id === task.id)) { render(); popCheck($(`.task-item[data-id="${task.id}"]`)); }
     else { item.classList.toggle('completed', task.completed); popCheck(item); leaveItem(item).then(() => render()); }
   }
+  if (action === 'course') { setCourse(event.target.closest('[data-course]').dataset.course); return; }
   if (action === 'edit') openModal(task);
   if (action === 'menu') {
     $$('.action-menu').forEach((menu) => menu.remove());
     const menu = document.createElement('div');
     menu.className = 'action-menu';
-    menu.innerHTML = `<button data-menu="edit">Edit</button>${task.canvasUrl ? '<button data-menu="canvas">Open in Canvas</button>' : ''}<button class="danger" data-menu="delete">Delete</button>`;
+    menu.innerHTML = `<button data-menu="edit">Edit</button><button data-menu="focus">Focus 25 min</button>${task.canvasUrl ? '<button data-menu="canvas">Open in Canvas</button>' : ''}<button class="danger" data-menu="delete">Delete</button>`;
     event.target.parentElement.append(menu);
     menu.style.transformOrigin = 'top right';
     motion(menu, { opacity: [0, 1], y: [-4, 0], scale: [0.95, 1], duration: 180, ease: 'outQuad' });
+    // Ignore clicks on the menu's padding; act on a button, then close the menu.
     menu.addEventListener('click', (menuEvent) => {
-      if (menuEvent.target.dataset.menu === 'edit') openModal(task);
-      if (menuEvent.target.dataset.menu === 'canvas') window.daymark.openExternal(task.canvasUrl);
-      if (menuEvent.target.dataset.menu === 'delete') {
+      const choice = menuEvent.target.closest('[data-menu]')?.dataset.menu;
+      if (!choice) return;
+      menu.remove();
+      if (choice === 'edit') openModal(task);
+      if (choice === 'focus') startFocus(task);
+      if (choice === 'canvas') window.daymark.openExternal(task.canvasUrl);
+      if (choice === 'delete') {
         // Remember deleted Canvas items so the next refresh doesn't bring them back.
         if (task.canvasUid) window.daymark.canvasHide(task.canvasUid);
         if (task.googleId) {
@@ -248,7 +316,7 @@ function taskAction(event) {
         persist(); toast('Task deleted'); queueGoogleSync();
         leaveItem(item).then(() => render());
       }
-    }, { once: true });
+    });
   }
 }
 
@@ -270,6 +338,7 @@ function renderGoogleStatus(status = state.google) {
   $('#google-dot').classList.toggle('connected', status.connected);
   $('#google-button').classList.toggle('connected', status.connected);
   $('#google-client-id').value = status.clientId || '';
+  $('#google-client-secret').placeholder = status.hasClientSecret ? 'Saved (encrypted). Paste to replace.' : 'GOCSPX-… (if Google asks for it)';
   const select = $('#google-list-select');
   select.innerHTML = (status.lists || []).map((list) => `<option value="${escapeHtml(list.id)}">${escapeHtml(list.title)}</option>`).join('');
   if (status.selectedListId) select.value = status.selectedListId;
@@ -295,7 +364,8 @@ async function connectGoogle() {
   button.disabled = true;
   setGoogleMessage('Saving client ID…');
   try {
-    await window.daymark.googleSetClientId($('#google-client-id').value);
+    await window.daymark.googleSetClientId($('#google-client-id').value, $('#google-client-secret').value);
+    $('#google-client-secret').value = '';
     setGoogleMessage('Complete sign-in in your browser…');
     const status = await window.daymark.googleConnect();
     renderGoogleStatus(status);
@@ -386,10 +456,10 @@ function mergeCanvasEvents(events) {
   for (const event of events) {
     const task = byUid.get(event.uid);
     if (!task) {
-      state.tasks.push({ id: uid(), title: event.title, notes: '', dueDate: event.dueDate, category: 'Canvas', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now(), canvasUid: event.uid, canvasUrl: event.url });
+      state.tasks.push({ id: uid(), title: event.title, notes: '', dueDate: event.dueDate, dueAt: event.dueAt, category: 'Canvas', priority: 'medium', completed: false, createdAt: Date.now(), modifiedAt: Date.now(), canvasUid: event.uid, canvasUrl: event.url });
       added++;
-    } else if (task.title !== event.title || task.dueDate !== event.dueDate) {
-      Object.assign(task, { title: event.title, dueDate: event.dueDate, canvasUrl: event.url, modifiedAt: Date.now() });
+    } else if (task.title !== event.title || task.dueDate !== event.dueDate || task.dueAt !== event.dueAt) {
+      Object.assign(task, { title: event.title, dueDate: event.dueDate, dueAt: event.dueAt, canvasUrl: event.url, modifiedAt: Date.now() });
     }
   }
   return added;
@@ -492,6 +562,13 @@ async function init() {
   $('#connect-canvas').addEventListener('click', connectCanvas);
   $('#refresh-canvas').addEventListener('click', () => refreshCanvas(false));
   $('#disconnect-canvas').addEventListener('click', disconnectCanvas);
+  $('#focus-stop').addEventListener('click', () => stopFocus(false));
+  $('#quick-title').addEventListener('keydown', (event) => { if (event.key === 'Escape' && quickAddFromHotkey) { quickAddFromHotkey = false; event.target.value = ''; collapseWidget(); } });
+  window.daymark.onQuickAdd(startHotkeyQuickAdd);
+  window.daymark.quickAddShortcut().then((combo) => {
+    const keys = combo.replace('Control', 'Ctrl').replace('Command', '⌘').replace('Option', '⌥');
+    $('#quick-title').placeholder = `Add a task… try "essay fri"${keys ? ` · ${keys} anywhere` : ''}`;
+  });
   let pinned = true;
   $('#pin-window').addEventListener('click', async () => {
     pinned = await window.daymark.setPinned(!pinned);
@@ -519,6 +596,74 @@ async function init() {
   } catch (error) { console.error('Could not read Canvas status:', error); }
   setInterval(() => syncGoogle(true), 5 * 60 * 1000);
   setInterval(() => refreshCanvas(true), 30 * 60 * 1000);
+  checkReminders();
+  setInterval(checkReminders, 60 * 1000);
+}
+
+// ---- Reminders: 8 AM for today, 7 PM for tomorrow, 3 h before timed Canvas deadlines. Each fires once. ----
+const MORNING_HOUR = 8;
+const EVENING_HOUR = 19;
+const SOON_MS = 3 * 60 * 60 * 1000;
+
+function notify(title, tasks) {
+  const names = tasks.slice(0, 3).map((task) => `• ${task.title}`);
+  if (tasks.length > 3) names.push(`and ${tasks.length - 3} more`);
+  const notification = new Notification(title, { body: names.join('\n') });
+  notification.onclick = () => { window.daymark.showWindow(); openWidget(); };
+}
+
+function checkReminders(now = new Date()) {
+  const markOnce = (task, key) => {
+    if (task.reminded?.[key]) return false;
+    task.reminded = { ...task.reminded, [key]: true };
+    return true;
+  };
+  const open = state.tasks.filter((task) => !task._deleted && !task.completed && task.dueDate);
+  const today = dateKey(now);
+  const tomorrowDate = new Date(now); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+  const tomorrow = dateKey(tomorrowDate);
+  const dueToday = now.getHours() >= MORNING_HOUR ? open.filter((task) => task.dueDate === today && markOnce(task, `day:${today}`)) : [];
+  const dueTomorrow = now.getHours() >= EVENING_HOUR ? open.filter((task) => task.dueDate === tomorrow && markOnce(task, `eve:${tomorrow}`)) : [];
+  const dueSoon = open.filter((task) => task.dueAt && task.dueAt > now.getTime() && task.dueAt - now.getTime() <= SOON_MS && markOnce(task, `soon:${task.dueAt}`));
+  if (dueToday.length) notify(`${dueToday.length} due today`, dueToday);
+  if (dueTomorrow.length) notify(`${dueTomorrow.length} due tomorrow`, dueTomorrow);
+  for (const task of dueSoon) notify(`Due at ${new Date(task.dueAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`, [task]);
+  if (dueToday.length || dueTomorrow.length || dueSoon.length) persist();
+  return { dueToday, dueTomorrow, dueSoon };
+}
+
+// ---- Focus timer: 25 minutes on one task, shown in the widget and under the folder. ----
+const FOCUS_MS = 25 * 60 * 1000;
+let focusTimer;
+
+function startFocus(task) {
+  clearInterval(focusTimer);
+  state.focus = { taskId: task.id, title: task.title, endsAt: Date.now() + FOCUS_MS };
+  $('#focus-title').textContent = task.title;
+  $('#focus-bar').hidden = false;
+  $('#focus-badge').hidden = false;
+  motion('#focus-bar', { opacity: [0, 1], y: [-6, 0], duration: 320, ease: 'outQuart' });
+  tickFocus();
+  focusTimer = setInterval(tickFocus, 1000);
+  toast('Focus started · 25 min');
+}
+
+function tickFocus() {
+  if (!state.focus) return;
+  const left = Math.max(0, state.focus.endsAt - Date.now());
+  const label = `${String(Math.floor(left / 60000)).padStart(2, '0')}:${String(Math.floor(left / 1000) % 60).padStart(2, '0')}`;
+  $('#focus-time').textContent = label;
+  $('#focus-badge').textContent = label;
+  if (left === 0) stopFocus(true);
+}
+
+function stopFocus(finished) {
+  clearInterval(focusTimer);
+  if (finished && state.focus) notify('Focus session done', [{ title: state.focus.title }]);
+  state.focus = null;
+  $('#focus-bar').hidden = true;
+  $('#focus-badge').hidden = true;
+  toast(finished ? 'Focus done · take a break' : 'Focus stopped');
 }
 
 function moveFolderPapers(event) {

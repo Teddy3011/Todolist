@@ -1,13 +1,14 @@
 {
   "name": "daymark-desktop",
-  "version": "1.9.1",
+  "version": "2.0.0",
   "description": "A calm, focused desktop to-do list.",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
     "pack": "electron-builder --dir",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac"
   },
   "devDependencies": {
     "electron": "^38.2.2",
@@ -29,6 +30,10 @@
     ],
     "win": {
       "target": "nsis"
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity"
     }
   }
 }

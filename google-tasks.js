@@ -21,22 +21,25 @@ class GoogleTasksService {
     try {
       const stored = JSON.parse(await fs.readFile(this.file, 'utf8'));
       let tokens = null;
+      let clientSecret = '';
       if (stored.encryptedTokens && safeStorage.isEncryptionAvailable()) tokens = JSON.parse(safeStorage.decryptString(Buffer.from(stored.encryptedTokens, 'base64')));
-      this.state = { clientId: stored.clientId || '', selectedListId: stored.selectedListId || '', lists: stored.lists || [], tokens };
+      if (stored.encryptedSecret && safeStorage.isEncryptionAvailable()) clientSecret = safeStorage.decryptString(Buffer.from(stored.encryptedSecret, 'base64'));
+      this.state = { clientId: stored.clientId || '', clientSecret, selectedListId: stored.selectedListId || '', lists: stored.lists || [], tokens };
     } catch {
-      this.state = { clientId: '', selectedListId: '', lists: [], tokens: null };
+      this.state = { clientId: '', clientSecret: '', selectedListId: '', lists: [], tokens: null };
     }
     return this.state;
   }
 
   async save() {
     const state = await this.load();
-    if (state.tokens && !safeStorage.isEncryptionAvailable()) throw new Error('Secure Windows credential storage is unavailable.');
+    if ((state.tokens || state.clientSecret) && !safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
     const stored = {
       clientId: state.clientId,
       selectedListId: state.selectedListId,
       lists: state.lists,
-      encryptedTokens: state.tokens ? safeStorage.encryptString(JSON.stringify(state.tokens)).toString('base64') : null
+      encryptedTokens: state.tokens ? safeStorage.encryptString(JSON.stringify(state.tokens)).toString('base64') : null,
+      encryptedSecret: state.clientSecret ? safeStorage.encryptString(state.clientSecret).toString('base64') : null
     };
     await fs.mkdir(path.dirname(this.file), { recursive: true });
     await fs.writeFile(this.file, JSON.stringify(stored, null, 2), 'utf8');
@@ -44,21 +47,31 @@ class GoogleTasksService {
 
   async status() {
     const state = await this.load();
-    return { connected: Boolean(state.tokens?.refresh_token || state.tokens?.access_token), clientId: state.clientId, selectedListId: state.selectedListId, lists: state.lists };
+    return { connected: Boolean(state.tokens?.refresh_token || state.tokens?.access_token), clientId: state.clientId, hasClientSecret: Boolean(state.clientSecret), selectedListId: state.selectedListId, lists: state.lists };
   }
 
-  async setClientId(clientId) {
+  async setClientId(clientId, clientSecret) {
     const value = String(clientId || '').trim();
     if (value && !value.endsWith('.apps.googleusercontent.com')) throw new Error('Enter a valid Google OAuth desktop client ID.');
     const state = await this.load();
+    const secret = String(clientSecret || '').trim();
     if (state.clientId !== value) {
       state.clientId = value;
+      state.clientSecret = secret;
       state.tokens = null;
       state.lists = [];
       state.selectedListId = '';
       await this.save();
+    } else if (secret && secret !== state.clientSecret) {
+      state.clientSecret = secret;
+      await this.save();
     }
     return this.status();
+  }
+
+  // Google's token endpoint requires the secret for "Desktop app" clients even with PKCE; send it when we have one.
+  clientAuth(state) {
+    return state.clientSecret ? { client_id: state.clientId, client_secret: state.clientSecret } : { client_id: state.clientId };
   }
 
   async setSelectedList(listId) {
@@ -104,9 +117,9 @@ class GoogleTasksService {
     const timeout = setTimeout(() => rejectCode(new Error('Google sign-in timed out.')), 180000);
     try {
       const code = await codePromise;
-      const response = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: state.clientId, code, code_verifier: verifier, grant_type: 'authorization_code', redirect_uri: redirectUri }) });
+      const response = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...this.clientAuth(state), code, code_verifier: verifier, grant_type: 'authorization_code', redirect_uri: redirectUri }) });
       const tokens = await response.json();
-      if (!response.ok) throw new Error(tokens.error_description || 'Google did not return an access token.');
+      if (!response.ok) throw new Error(/client_secret/i.test(tokens.error_description || '') ? 'Google needs the client secret for this OAuth client. Paste it into the client secret field and connect again.' : tokens.error_description || 'Google did not return an access token.');
       state.tokens = { ...tokens, expires_at: Date.now() + (tokens.expires_in || 3600) * 1000 };
       await this.refreshLists();
       await this.save();
@@ -122,7 +135,7 @@ class GoogleTasksService {
     if (!state.tokens) throw new Error('Connect Google Tasks first.');
     if (state.tokens.access_token && state.tokens.expires_at > Date.now() + 60000) return state.tokens.access_token;
     if (!state.tokens.refresh_token) throw new Error('Google access expired. Connect again.');
-    const response = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ client_id: state.clientId, refresh_token: state.tokens.refresh_token, grant_type: 'refresh_token' }) });
+    const response = await fetch(TOKEN_URL, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: new URLSearchParams({ ...this.clientAuth(state), refresh_token: state.tokens.refresh_token, grant_type: 'refresh_token' }) });
     const refreshed = await response.json();
     if (!response.ok) throw new Error(refreshed.error_description || 'Could not refresh Google access.');
     state.tokens = { ...state.tokens, ...refreshed, expires_at: Date.now() + (refreshed.expires_in || 3600) * 1000 };
@@ -191,10 +204,10 @@ class GoogleTasksService {
     const result = [];
     for (const original of Array.isArray(tasks) ? tasks : []) {
       const local = { ...original };
+      // Tasks that belong to another Google list stay as they are instead of being copied into this one.
       if (local.googleId && local.googleListId && local.googleListId !== listId) {
-        local.googleId = null;
-        local.googleUpdatedAt = '';
-        local.lastSyncedAt = 0;
+        result.push(local);
+        continue;
       }
       if (local._deleted) {
         if (local.googleId && remoteById.has(local.googleId) && !remoteById.get(local.googleId).deleted) await this.request(`${API_URL}/lists/${encodeURIComponent(listId)}/tasks/${encodeURIComponent(local.googleId)}`, { method: 'DELETE' });

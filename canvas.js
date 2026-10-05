@@ -17,7 +17,7 @@ async function load() {
 }
 
 async function save({ feedUrl, hidden }) {
-  if (feedUrl && !safeStorage.isEncryptionAvailable()) throw new Error('Secure Windows credential storage is unavailable.');
+  if (feedUrl && !safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
   const stored = { encryptedUrl: feedUrl ? safeStorage.encryptString(feedUrl).toString('base64') : null, hidden };
   await fs.mkdir(path.dirname(dataFile()), { recursive: true });
   await fs.writeFile(dataFile(), JSON.stringify(stored, null, 2), 'utf8');
@@ -68,13 +68,21 @@ function icsDate(value) {
   return `${y}-${mo}-${d}`;
 }
 
+// Exact due time in ms for timed UTC events (Canvas assignments); all-day events have none.
+function icsTime(value) {
+  const match = /^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})Z/.exec(value || '');
+  if (!match) return null;
+  const [, y, mo, d, h, mi, sec] = match;
+  return Date.UTC(+y, mo - 1, +d, +h, +mi, +sec);
+}
+
 function parseIcs(text) {
   const events = [];
   let event = null;
   for (const line of text.replace(/\r?\n[ \t]/g, '').split(/\r?\n/)) {
     if (line === 'BEGIN:VEVENT') event = {};
     else if (line === 'END:VEVENT') {
-      if (event?.uid && event.dueDate) events.push({ title: 'Untitled', url: '', ...event });
+      if (event?.uid && event.dueDate) events.push({ title: 'Untitled', url: '', dueAt: null, ...event });
       event = null;
     } else if (event) {
       const colon = line.indexOf(':');
@@ -84,7 +92,7 @@ function parseIcs(text) {
       if (name === 'UID') event.uid = value;
       else if (name === 'SUMMARY') event.title = unescapeText(value);
       else if (name === 'URL') event.url = value;
-      else if (name === 'DTSTART') event.dueDate = icsDate(value);
+      else if (name === 'DTSTART') { event.dueDate = icsDate(value); event.dueAt = icsTime(value); }
     }
   }
   return events;
