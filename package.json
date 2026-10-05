@@ -1,6 +1,6 @@
 {
   "name": "daymark-desktop",
-  "version": "1.9.0",
+  "version": "1.9.1",
   "description": "A calm, focused desktop to-do list.",
   "main": "main.js",
   "scripts": {
@@ -15,7 +15,7 @@
   },
   "build": {
     "appId": "com.daymark.desktop",
-    "productName": "Daymark",
+    "productName": "em cheyali bhaii",
     "files": [
       "main.js",
       "google-tasks.js",

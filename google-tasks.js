@@ -81,7 +81,7 @@ class GoogleTasksService {
       const url = new URL(request.url, 'http://127.0.0.1');
       if (url.pathname !== '/oauth2callback') return response.writeHead(404).end();
       if (url.searchParams.get('state') !== oauthState) {
-        response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Daymark could not verify this sign-in. You can close this tab.');
+        response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('em cheyali bhaii could not verify this sign-in. You can close this tab.');
         return rejectCode(new Error('Google sign-in state did not match.'));
       }
       const error = url.searchParams.get('error');
@@ -90,7 +90,7 @@ class GoogleTasksService {
         response.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' }).end('Google sign-in was cancelled. You can close this tab.');
         return rejectCode(new Error(error || 'Google sign-in was cancelled.'));
       }
-      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end('<!doctype html><title>Daymark connected</title><body style="background:#111;color:#f1ead8;font:18px system-ui;display:grid;place-items:center;height:100vh;margin:0"><p>Daymark is connected. You can close this tab.</p></body>');
+      response.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' }).end('<!doctype html><title>em cheyali bhaii connected</title><body style="background:#111;color:#f1ead8;font:18px system-ui;display:grid;place-items:center;height:100vh;margin:0"><p>em cheyali bhaii is connected. You can close this tab.</p></body>');
       resolveCode(code);
     });
     await new Promise((resolve, reject) => {

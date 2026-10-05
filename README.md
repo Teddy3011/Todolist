@@ -1,4 +1,4 @@
-# Daymark
+# em cheyali bhaii
 
 A calm, floating desktop to-do widget built with Electron and plain HTML, CSS, and JavaScript. The widget stays above other windows by default and includes controls to unpin, minimize, or close it.
 
@@ -13,7 +13,7 @@ Tasks are stored locally in Electron's application data folder. No account or in
 
 ## Google Tasks sync
 
-Open Daymark, select the **G** button, and follow the setup steps. Enable the Google Tasks API in Google Cloud, create an OAuth client with application type **Desktop app**, then paste its client ID into Daymark. Sign-in uses OAuth 2.0 with PKCE and tokens are encrypted using Windows secure storage. Daymark syncs the selected Google task list in both directions.
+Open em cheyali bhaii, select the **G** button, and follow the setup steps. Enable the Google Tasks API in Google Cloud, create an OAuth client with application type **Desktop app**, then paste its client ID into em cheyali bhaii. Sign-in uses OAuth 2.0 with PKCE and tokens are encrypted using Windows secure storage. em cheyali bhaii syncs the selected Google task list in both directions.
 
 ## Canvas
 
