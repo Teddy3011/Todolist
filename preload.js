@@ -24,5 +24,8 @@ contextBridge.exposeInMainWorld('daymark', {
   canvasSetFeed: (url) => ipcRenderer.invoke('canvas:set-feed', url),
   canvasFetch: () => ipcRenderer.invoke('canvas:fetch'),
   canvasHide: (uid) => ipcRenderer.invoke('canvas:hide', uid),
+  calendarStatus: () => ipcRenderer.invoke('calendar:status'),
+  calendarSetFeed: (url) => ipcRenderer.invoke('calendar:set-feed', url),
+  calendarFetch: () => ipcRenderer.invoke('calendar:fetch'),
   openExternal: (url) => ipcRenderer.send('open-external', url)
 });

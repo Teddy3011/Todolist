@@ -4,6 +4,7 @@ const path = require('node:path');
 const { shell } = require('electron');
 const GoogleTasksService = require('./google-tasks');
 const canvas = require('./canvas');
+const calendar = require('./calendar');
 
 let mainWindow;
 let googleTasks;
@@ -106,6 +107,13 @@ function setWidgetOpen(open) {
   return mainWindow.getBounds();
 }
 
+// One copy only: a second launch (e.g. startup + a click) would race the first on tasks.json and the hotkey.
+if (!app.requestSingleInstanceLock()) app.exit(0);
+app.on('second-instance', () => {
+  mainWindow?.show();
+  mainWindow?.focus();
+});
+
 app.whenReady().then(() => {
   googleTasks = new GoogleTasksService();
   ipcMain.handle('tasks:load', loadTasks);
@@ -121,6 +129,9 @@ app.whenReady().then(() => {
   ipcMain.handle('canvas:set-feed', (_event, url) => canvas.setFeedUrl(url));
   ipcMain.handle('canvas:fetch', () => canvas.fetchEvents());
   ipcMain.handle('canvas:hide', (_event, uid) => canvas.hide(String(uid || '')));
+  ipcMain.handle('calendar:status', () => calendar.status());
+  ipcMain.handle('calendar:set-feed', (_event, url) => calendar.setFeedUrl(url));
+  ipcMain.handle('calendar:fetch', () => calendar.fetchEvents());
   ipcMain.on('open-external', async (_event, url) => {
     try {
       const parsed = new URL(url);

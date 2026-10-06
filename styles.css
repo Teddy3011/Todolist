@@ -431,3 +431,17 @@ h1, h2, h3, button, input, textarea, select, .widget-brand, .task-main strong {
   .focus-badge { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); padding: 1px 5px; background: #111; color: #ecebe7; font: 700 10px "Helvetica Neue", Helvetica, Arial, sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; pointer-events: none; }
   .focus-badge[hidden] { display: none; }
 }
+
+/* Google Calendar: today's schedule strip and event rows */
+@media (max-width: 600px) {
+  .schedule { margin: 0 2px 14px; }
+  .schedule[hidden] { display: none; }
+  .schedule-head { display: flex; justify-content: space-between; align-items: baseline; padding-bottom: 4px; border-bottom: 2px solid var(--swiss-ink, #111); font-size: 9px; text-transform: lowercase; }
+  .schedule-head b { font: 700 16px var(--swiss-font, sans-serif); letter-spacing: -.04em; }
+  .schedule-head span { color: var(--swiss-muted, #777); }
+  .schedule-more { margin: 6px 0 0; color: var(--swiss-muted, #777); font-size: 10px; font-style: italic; }
+  .event-row { display: grid; grid-template-columns: 58px 1fr; gap: 8px; align-items: baseline; padding: 7px 4px; border-bottom: 1px dashed var(--swiss-rule, #ccc); }
+  .event-row time { font: 700 11px var(--swiss-font, sans-serif); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+  .event-row strong { display: block; font: 600 12px var(--swiss-font, sans-serif); letter-spacing: -.02em; }
+  .event-row small { display: block; margin-top: 1px; color: var(--swiss-muted, #777); font-size: 9px; }
+}

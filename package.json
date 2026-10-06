@@ -1,6 +1,6 @@
 {
   "name": "daymark-desktop",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "A calm, focused desktop to-do list.",
   "main": "main.js",
   "scripts": {
@@ -21,6 +21,7 @@
       "main.js",
       "google-tasks.js",
       "canvas.js",
+      "calendar.js",
       "preload.js",
       "index.html",
       "styles.css",
@@ -35,5 +36,8 @@
       "target": "dmg",
       "category": "public.app-category.productivity"
     }
+  },
+  "dependencies": {
+    "ical.js": "1.5.0"
   }
 }

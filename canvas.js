@@ -2,49 +2,56 @@ const fs = require('node:fs/promises');
 const path = require('node:path');
 const { app, safeStorage } = require('electron');
 
+// Encrypted storage for a pasted calendar-feed link (shared by Canvas and the Google Calendar import).
+function createFeedStore(fileName, label) {
+  const dataFile = () => path.join(app.getPath('userData'), fileName);
+
+  async function load() {
+    try {
+      const stored = JSON.parse(await fs.readFile(dataFile(), 'utf8'));
+      const feedUrl = stored.encryptedUrl && safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(stored.encryptedUrl, 'base64')) : '';
+      return { feedUrl, hidden: stored.hidden || [] };
+    } catch {
+      return { feedUrl: '', hidden: [] };
+    }
+  }
+
+  async function save({ feedUrl, hidden }) {
+    if (feedUrl && !safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
+    const stored = { encryptedUrl: feedUrl ? safeStorage.encryptString(feedUrl).toString('base64') : null, hidden };
+    await fs.mkdir(path.dirname(dataFile()), { recursive: true });
+    await fs.writeFile(dataFile(), JSON.stringify(stored, null, 2), 'utf8');
+  }
+
+  async function status() {
+    const { feedUrl } = await load();
+    return { connected: Boolean(feedUrl), host: feedUrl ? new URL(feedUrl).hostname : '' };
+  }
+
+  async function setFeedUrl(value) {
+    const feedUrl = String(value || '').trim().replace(/^webcal:\/\//i, 'https://');
+    if (feedUrl) {
+      let parsed;
+      try { parsed = new URL(feedUrl); } catch { throw new Error(`Paste the full ${label}.`); }
+      if (parsed.protocol !== 'https:' || !parsed.pathname.endsWith('.ics')) throw new Error('That is not a calendar feed link. It should start with https:// and end in .ics.');
+    }
+    const state = await load();
+    await save({ feedUrl, hidden: feedUrl === state.feedUrl ? state.hidden : [] });
+    return status();
+  }
+
+  async function hide(uid) {
+    const state = await load();
+    if (uid && !state.hidden.includes(uid)) state.hidden.push(uid);
+    await save(state);
+  }
+
+  return { load, status, setFeedUrl, hide };
+}
+
 // Read-only import of the Canvas calendar feed (Canvas → Calendar → Calendar Feed).
 const PAST_DAYS = 14;
-const dataFile = () => path.join(app.getPath('userData'), 'canvas.json');
-
-async function load() {
-  try {
-    const stored = JSON.parse(await fs.readFile(dataFile(), 'utf8'));
-    const feedUrl = stored.encryptedUrl && safeStorage.isEncryptionAvailable() ? safeStorage.decryptString(Buffer.from(stored.encryptedUrl, 'base64')) : '';
-    return { feedUrl, hidden: stored.hidden || [] };
-  } catch {
-    return { feedUrl: '', hidden: [] };
-  }
-}
-
-async function save({ feedUrl, hidden }) {
-  if (feedUrl && !safeStorage.isEncryptionAvailable()) throw new Error('Secure credential storage is unavailable on this computer.');
-  const stored = { encryptedUrl: feedUrl ? safeStorage.encryptString(feedUrl).toString('base64') : null, hidden };
-  await fs.mkdir(path.dirname(dataFile()), { recursive: true });
-  await fs.writeFile(dataFile(), JSON.stringify(stored, null, 2), 'utf8');
-}
-
-async function status() {
-  const { feedUrl } = await load();
-  return { connected: Boolean(feedUrl), host: feedUrl ? new URL(feedUrl).hostname : '' };
-}
-
-async function setFeedUrl(value) {
-  const feedUrl = String(value || '').trim().replace(/^webcal:\/\//i, 'https://');
-  if (feedUrl) {
-    let parsed;
-    try { parsed = new URL(feedUrl); } catch { throw new Error('Paste the full Canvas calendar feed link.'); }
-    if (parsed.protocol !== 'https:' || !parsed.pathname.endsWith('.ics')) throw new Error('That is not a calendar feed link. It should start with https:// and end in .ics.');
-  }
-  const state = await load();
-  await save({ feedUrl, hidden: feedUrl === state.feedUrl ? state.hidden : [] });
-  return status();
-}
-
-async function hide(uid) {
-  const state = await load();
-  if (uid && !state.hidden.includes(uid)) state.hidden.push(uid);
-  await save(state);
-}
+const { load, status, setFeedUrl, hide } = createFeedStore('canvas.json', 'Canvas calendar feed link');
 
 async function fetchEvents() {
   const { feedUrl, hidden } = await load();
@@ -98,4 +105,4 @@ function parseIcs(text) {
   return events;
 }
 
-module.exports = { status, setFeedUrl, hide, fetchEvents, parseIcs, load };
+module.exports = { status, setFeedUrl, hide, fetchEvents, parseIcs, load, createFeedStore };

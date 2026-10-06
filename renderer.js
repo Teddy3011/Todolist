@@ -9,7 +9,8 @@ const state = {
   syncing: false,
   lastSyncedAt: null,
   course: null,
-  focus: null
+  focus: null,
+  events: []
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -105,39 +106,62 @@ function dueLabel(task) {
 function render(animate = false) {
   const tasks = visibleTasks();
   const list = $('#task-list');
-  const perDay = tasks.reduce((counts, task) => ({ ...counts, [task.dueDate]: (counts[task.dueDate] || 0) + 1 }), {});
-  let lastDay = null;
-  list.innerHTML = tasks.map((task) => {
-    const course = courseOf(task);
-    const title = course ? task.title.replace(/\s*\[[^\]]+\]\s*$/, '') : task.title;
-    let head = '';
-    if (state.view === 'week') {
-      const day = task.dueDate < todayKey() ? 'overdue' : task.dueDate;
-      if (day !== lastDay) {
-        const count = day === 'overdue' ? tasks.filter((entry) => entry.dueDate < todayKey()).length : perDay[day];
-        head = `<div class="day-head ${count >= 4 && day !== 'overdue' ? 'heavy' : ''}"><b>${day === 'overdue' ? 'overdue' : weekdayLabel(day)}</b><span>${count} task${count === 1 ? '' : 's'}</span></div>`;
-        lastDay = day;
-      }
-    }
-    return `${head}
-    <article class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
-      <button class="check-button" data-action="toggle" aria-label="${task.completed ? 'Mark incomplete' : 'Complete task'}"></button>
-      <div class="task-main" data-action="edit">
-        <strong>${escapeHtml(title)}</strong>
-        <div class="task-meta">
-          <span class="priority-dot ${task.priority}"></span><span>${task.priority[0].toUpperCase() + task.priority.slice(1)}</span>
-          <span class="category-pill">${escapeHtml(task.category)}</span>
-          ${course ? `<button class="course-pill course-${courseColor(course)}" data-action="course" data-course="${escapeHtml(course)}" title="Show only ${escapeHtml(course)}">${escapeHtml(course)}</button>` : ''}
-          ${task.notes ? '<span>• Notes</span>' : ''}
-        </div>
-      </div>
-      <span class="due ${task.dueDate && task.dueDate < todayKey() && !task.completed ? 'overdue' : ''}">${dueLabel(task)}</span>
-      <div class="task-actions"><button class="more-button" data-action="menu" aria-label="Task actions">···</button></div>
-    </article>`;
-  }).join('');
-  $('#empty-state').hidden = tasks.length > 0;
+  list.innerHTML = state.view === 'week' && !state.course ? weekHtml(tasks) : tasks.map(taskRow).join('');
+  $('#empty-state').hidden = list.children.length > 0;
   if (animate) enterList(list.children);
   updateSummary();
+  renderSchedule();
+}
+
+// Week view: one block per day with that day's calendar events, then its tasks. Overdue tasks first.
+function weekHtml(tasks) {
+  const today = todayKey();
+  return ['overdue', ...Array.from({ length: 7 }, (_, offset) => addDays(offset))].map((day) => {
+    const dayTasks = tasks.filter((task) => day === 'overdue' ? task.dueDate < today : task.dueDate === day);
+    const dayEvents = day === 'overdue' ? [] : state.events.filter((event) => dateKey(event.start) === day);
+    if (!dayTasks.length && !dayEvents.length) return '';
+    const meta = [dayTasks.length && `${dayTasks.length} task${dayTasks.length === 1 ? '' : 's'}`, dayEvents.length && `${dayEvents.length} event${dayEvents.length === 1 ? '' : 's'}`].filter(Boolean).join(' · ');
+    return `<div class="day-head ${dayTasks.length >= 4 && day !== 'overdue' ? 'heavy' : ''}"><b>${day === 'overdue' ? 'overdue' : weekdayLabel(day)}</b><span>${meta}</span></div>${dayEvents.map(eventRow).join('')}${dayTasks.map(taskRow).join('')}`;
+  }).join('');
+}
+
+const eventTime = (event) => event.allDay ? 'all day' : new Date(event.start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }).toLowerCase();
+function eventRow(event) {
+  return `<div class="event-row"><time>${eventTime(event)}</time><div><strong>${escapeHtml(event.title)}</strong>${event.location ? `<small>${escapeHtml(event.location)}</small>` : ''}</div></div>`;
+}
+
+// Today's remaining events above the task list (only when a calendar is connected).
+function renderSchedule() {
+  const section = $('#schedule');
+  if (!calendarConnected) { section.hidden = true; return; }
+  const now = Date.now();
+  const today = todayKey();
+  const left = state.events.filter((event) => dateKey(event.start) === today && event.end > now);
+  section.hidden = false;
+  $('#schedule-meta').textContent = left.length ? `${left.length} left` : '';
+  $('#schedule-list').innerHTML = left.length
+    ? left.slice(0, 4).map(eventRow).join('') + (left.length > 4 ? `<p class="schedule-more">+ ${left.length - 4} more · see the week tab</p>` : '')
+    : '<p class="schedule-more">nothing else on your calendar today.</p>';
+}
+
+function taskRow(task) {
+  const course = courseOf(task);
+  const title = course ? task.title.replace(/\s*\[[^\]]+\]\s*$/, '') : task.title;
+  return `
+  <article class="task-item ${task.completed ? 'completed' : ''}" data-id="${task.id}">
+    <button class="check-button" data-action="toggle" aria-label="${task.completed ? 'Mark incomplete' : 'Complete task'}"></button>
+    <div class="task-main" data-action="edit">
+      <strong>${escapeHtml(title)}</strong>
+      <div class="task-meta">
+        <span class="priority-dot ${task.priority}"></span><span>${task.priority[0].toUpperCase() + task.priority.slice(1)}</span>
+        <span class="category-pill">${escapeHtml(task.category)}</span>
+        ${course ? `<button class="course-pill course-${courseColor(course)}" data-action="course" data-course="${escapeHtml(course)}" title="Show only ${escapeHtml(course)}">${escapeHtml(course)}</button>` : ''}
+        ${task.notes ? '<span>• Notes</span>' : ''}
+      </div>
+    </div>
+    <span class="due ${task.dueDate && task.dueDate < todayKey() && !task.completed ? 'overdue' : ''}">${dueLabel(task)}</span>
+    <div class="task-actions"><button class="more-button" data-action="menu" aria-label="Task actions">···</button></div>
+  </article>`;
 }
 
 function updateSummary() {
@@ -465,6 +489,63 @@ function mergeCanvasEvents(events) {
   return added;
 }
 
+let calendarConnected = false;
+function renderCalendarStatus(status) {
+  calendarConnected = status.connected;
+  $('#calendar-disconnected').hidden = status.connected;
+  $('#calendar-connected').hidden = !status.connected;
+  $('#calendar-dot').classList.toggle('connected', status.connected);
+  if (!status.connected) state.events = [];
+  render();
+}
+
+function setCalendarMessage(message, isError = false) {
+  $('#calendar-message').textContent = message;
+  $('#calendar-message').classList.toggle('error', isError);
+}
+
+let calendarRefreshing = false;
+async function refreshCalendar(silent = false) {
+  if (!calendarConnected || calendarRefreshing) return;
+  calendarRefreshing = true;
+  if (!silent) setCalendarMessage('Refreshing…');
+  try {
+    state.events = await window.daymark.calendarFetch();
+    render();
+    $('#calendar-last-sync').textContent = `Last refreshed ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · ${state.events.length} event${state.events.length === 1 ? '' : 's'} this week.`;
+    if (!silent) setCalendarMessage('Calendar is up to date.');
+  } catch (error) {
+    setCalendarMessage(cleanError(error), true);
+    if (!silent) toast('Calendar refresh failed');
+  } finally {
+    calendarRefreshing = false;
+  }
+}
+
+async function connectCalendar() {
+  const button = $('#connect-calendar');
+  button.disabled = true;
+  setCalendarMessage('Checking the address…');
+  try {
+    renderCalendarStatus(await window.daymark.calendarSetFeed($('#calendar-feed-url').value));
+    if (!calendarConnected) throw new Error('Paste your Google Calendar secret address first.');
+    $('#calendar-feed-url').value = '';
+    await refreshCalendar();
+    toast('Calendar connected');
+  } catch (error) {
+    setCalendarMessage(cleanError(error), true);
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function disconnectCalendar() {
+  try {
+    renderCalendarStatus(await window.daymark.calendarSetFeed(''));
+    setCalendarMessage('Calendar disconnected.');
+  } catch (error) { setCalendarMessage(cleanError(error), true); }
+}
+
 let canvasConnected = false;
 function renderCanvasStatus(status) {
   canvasConnected = status.connected;
@@ -563,6 +644,12 @@ async function init() {
   $('#refresh-canvas').addEventListener('click', () => refreshCanvas(false));
   $('#disconnect-canvas').addEventListener('click', disconnectCanvas);
   $('#focus-stop').addEventListener('click', () => stopFocus(false));
+  $('#calendar-button').addEventListener('click', () => { showModal($('#calendar-modal')); setCalendarMessage(''); });
+  $('#close-calendar-modal').addEventListener('click', () => hideModal($('#calendar-modal')));
+  $('#calendar-modal').addEventListener('click', (event) => { if (event.target === event.currentTarget) hideModal(event.currentTarget); });
+  $('#connect-calendar').addEventListener('click', connectCalendar);
+  $('#refresh-calendar').addEventListener('click', () => refreshCalendar(false));
+  $('#disconnect-calendar').addEventListener('click', disconnectCalendar);
   $('#quick-title').addEventListener('keydown', (event) => { if (event.key === 'Escape' && quickAddFromHotkey) { quickAddFromHotkey = false; event.target.value = ''; collapseWidget(); } });
   window.daymark.onQuickAdd(startHotkeyQuickAdd);
   window.daymark.quickAddShortcut().then((combo) => {
@@ -583,7 +670,7 @@ async function init() {
   $('.launcher-stage').addEventListener('pointerdown', startLauncherDrag);
   $('#folder-launcher').addEventListener('mousemove', moveFolderPapers);
   $('#folder-launcher').addEventListener('mouseleave', resetFolderPapers);
-  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); hideModal($('#canvas-modal')); } });
+  document.addEventListener('keydown', (event) => { if (event.key === 'Escape') { closeModal(); closeGoogleModal(); hideModal($('#canvas-modal')); hideModal($('#calendar-modal')); } });
   document.addEventListener('click', (event) => { if (!event.target.closest('.task-actions')) $$('.action-menu').forEach((menu) => menu.remove()); });
   render();
   try {
@@ -596,6 +683,12 @@ async function init() {
   } catch (error) { console.error('Could not read Canvas status:', error); }
   setInterval(() => syncGoogle(true), 5 * 60 * 1000);
   setInterval(() => refreshCanvas(true), 30 * 60 * 1000);
+  try {
+    renderCalendarStatus(await window.daymark.calendarStatus());
+    refreshCalendar(true);
+  } catch (error) { console.error('Could not read calendar status:', error); }
+  setInterval(() => refreshCalendar(true), 15 * 60 * 1000);
+  setInterval(renderSchedule, 60 * 1000);
   checkReminders();
   setInterval(checkReminders, 60 * 1000);
 }

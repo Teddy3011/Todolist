@@ -28,6 +28,10 @@ Open em cheyali bhaii, select the **G** button, and follow the setup steps. Enab
 
 Select the **C** button and paste your Canvas calendar feed link (Canvas → Calendar → Calendar Feed). Assignments and events from the last two weeks onward appear in a Canvas list and refresh every 30 minutes. The import is read-only, and the feed link is encrypted with the system keychain (Windows secure storage or macOS Keychain). Deleting a Canvas task keeps it from coming back on the next refresh.
 
+## Google Calendar
+
+Select the **▦** button and paste your calendar's **Secret address in iCal format** (Google Calendar → Settings → your calendar → Integrate calendar). This works with school accounts that block app sign-in. Today's remaining classes and events appear above your tasks, and the week tab shows each day's events next to its tasks. Repeating events, skipped dates and moved or cancelled sessions are handled. The import is read-only and refreshes every 15 minutes; the secret address is encrypted on your computer. Keep it private: anyone with it can see your calendar.
+
 ## Build a Windows installer
 
 ```powershell

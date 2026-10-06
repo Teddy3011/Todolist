@@ -62,6 +62,7 @@
         <div class="window-controls">
           <button id="google-button" class="window-button google-window-button" title="Google Tasks" aria-label="Google Tasks">G<span id="google-dot"></span></button>
           <button id="canvas-button" class="window-button google-window-button" title="Canvas" aria-label="Canvas">C<span id="canvas-dot"></span></button>
+          <button id="calendar-button" class="window-button google-window-button" title="Google Calendar" aria-label="Google Calendar">▦<span id="calendar-dot"></span></button>
           <button id="collapse-widget" class="window-button" title="Close to folder" aria-label="Close to folder">⌄</button>
           <button id="pin-window" class="window-button active" title="Keep on top" aria-label="Keep on top">◆</button>
           <button id="minimize-window" class="window-button" title="Minimize" aria-label="Minimize">−</button>
@@ -89,6 +90,11 @@
         <article><span class="summary-icon green">✓</span><div><strong id="summary-done">0</strong><small>Completed today</small></div></article>
         <article><span class="summary-icon orange">!</span><div><strong id="summary-open">0</strong><small>Tasks remaining</small></div></article>
         <blockquote id="daily-note">“Small steps, every day.”</blockquote>
+      </section>
+
+      <section id="schedule" class="schedule" aria-label="Today's schedule" hidden>
+        <div class="schedule-head"><b>today's schedule</b><span id="schedule-meta"></span></div>
+        <div id="schedule-list"></div>
       </section>
 
       <section class="task-panel">
@@ -202,6 +208,36 @@
         <p class="last-sync" id="canvas-last-sync">Not refreshed yet.</p>
       </div>
       <p id="canvas-message" class="google-message" role="status"></p>
+    </section>
+  </div>
+
+  <div class="modal-backdrop" id="calendar-modal" hidden>
+    <section class="modal google-modal" role="dialog" aria-modal="true" aria-labelledby="calendar-modal-title">
+      <div class="modal-head">
+        <div><span class="modal-kicker">SCHEDULE</span><h2 id="calendar-modal-title">Google Calendar</h2></div>
+        <button type="button" class="icon-button" id="close-calendar-modal" aria-label="Close">×</button>
+      </div>
+      <div id="calendar-disconnected">
+        <p class="google-intro">Show your classes and events next to your tasks. Read-only, and it works with school accounts that block app sign-in.</p>
+        <ol class="google-steps">
+          <li>In Google Calendar, open <strong>Settings</strong> and pick your calendar.</li>
+          <li>Under <strong>Integrate calendar</strong>, copy <strong>Secret address in iCal format</strong>.</li>
+          <li>Paste it below. Keep it private: anyone with it can see your calendar.</li>
+        </ol>
+        <label class="google-client-label">Secret address
+          <input id="calendar-feed-url" type="password" autocomplete="off" spellcheck="false" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics">
+        </label>
+        <button type="button" class="primary-button google-connect-button" id="connect-calendar">Connect calendar</button>
+      </div>
+      <div id="calendar-connected" hidden>
+        <div class="connected-badge"><span></span><div><strong>Calendar connected</strong><small>The secret address is encrypted on this computer.</small></div></div>
+        <div class="google-actions">
+          <button type="button" class="primary-button" id="refresh-calendar">Refresh now</button>
+          <button type="button" class="outline-button" id="disconnect-calendar">Disconnect</button>
+        </div>
+        <p class="last-sync" id="calendar-last-sync">Not refreshed yet.</p>
+      </div>
+      <p id="calendar-message" class="google-message" role="status"></p>
     </section>
   </div>
 
