@@ -42,11 +42,16 @@ The installer will be created in the `dist` folder.
 
 ## Mac
 
-On a Mac, install Node.js, then:
+Download the `.dmg` from the [latest release](https://github.com/Teddy3011/Todolist/releases/latest). It runs on Apple Silicon and Intel Macs.
+
+1. Open the `.dmg` and drag **em cheyali bhaii** into **Applications**.
+2. Open it once. macOS blocks it because the app isn't from an identified developer.
+3. Go to **System Settings → Privacy & Security**, scroll down and click **Open Anyway**.
+
+If macOS says the app "is damaged", run this once in Terminal, then open it again:
 
 ```bash
-npm install
-npm run dist:mac
+xattr -dr com.apple.quarantine "/Applications/em cheyali bhaii.app"
 ```
 
-Open the `.dmg` in `dist` and drag the app to Applications. The app is not signed, so the first time, right-click it and choose **Open**.
+The Mac build is made by GitHub Actions (`.github/workflows/mac.yml`) on every version tag. To build it yourself on a Mac: `npm install`, then `npm run dist:mac`.
