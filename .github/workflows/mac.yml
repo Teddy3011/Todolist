@@ -1,0 +1,39 @@
+name: Mac build
+
+# Builds a universal (Apple Silicon + Intel) .dmg on a GitHub-hosted Mac and attaches it to the release.
+# Runs on every pushed version tag, or by hand for an existing release.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to attach the .dmg to (e.g. v2.1.0)
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      # Ad-hoc signed (identity "-"), not notarized: macOS asks once via Privacy & Security → Open Anyway.
+      - name: Build .dmg
+        run: npm run dist:mac
+
+      - name: Attach to release
+        run: gh release upload "$TAG" dist/*.dmg --clobber
+        env:
+          GH_TOKEN: ${{ github.token }}
